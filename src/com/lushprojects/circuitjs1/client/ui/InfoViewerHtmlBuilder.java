@@ -198,7 +198,7 @@ final class InfoViewerHtmlBuilder {
             "    function parseSfcrConstructNames(codeText) {",
             "      if (!codeText) return [];",
             "      const names = [];",
-            "      const re = /(^|\\n)\\s*@?([A-Za-z_][A-Za-z0-9_]*)\\s*<-\\s*(sfcr_[A-Za-z0-9_]+)\\s*\\(/g;",
+            "      const re = /(^|\\n)\\s*@?([A-Za-z_][A-Za-z0-9_]*)\\s*(?:<-|=)\\s*(sfcr_[A-Za-z0-9_]+)\\s*\\(/g;",
             "      let m;",
             "      while ((m = re.exec(String(codeText))) !== null) {",
             "        const name = (m[2] || '').trim();",

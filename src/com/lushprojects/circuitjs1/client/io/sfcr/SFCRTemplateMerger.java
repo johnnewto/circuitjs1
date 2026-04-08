@@ -438,7 +438,7 @@ public final class SFCRTemplateMerger {
         String[] lines = text.split("\n");
         for (int i = 0; i < lines.length; i++) {
             String line = lines[i].trim();
-            if (!line.contains("<-") || !line.contains(fnName)) {
+            if (!looksLikeRStyleAssignmentStart(line) || !line.contains(fnName)) {
                 continue;
             }
             StringBuilder one = new StringBuilder();
@@ -492,10 +492,57 @@ public final class SFCRTemplateMerger {
         if (trimmed == null || trimmed.isEmpty()) {
             return false;
         }
-        if (!trimmed.contains("<-") || !trimmed.contains("sfcr_")) {
+        int idx = 0;
+        int length = trimmed.length();
+        while (idx < length && Character.isWhitespace(trimmed.charAt(idx))) {
+            idx++;
+        }
+        if (idx >= length) {
             return false;
         }
-        return trimmed.contains("sfcr_set") || trimmed.contains("sfcr_matrix");
+        char first = trimmed.charAt(idx);
+        if (!Character.isLetter(first) && first != '_') {
+            return false;
+        }
+        idx++;
+        while (idx < length) {
+            char ch = trimmed.charAt(idx);
+            if (!Character.isLetterOrDigit(ch) && ch != '_') {
+                break;
+            }
+            idx++;
+        }
+        while (idx < length && Character.isWhitespace(trimmed.charAt(idx))) {
+            idx++;
+        }
+        if (idx >= length) {
+            return false;
+        }
+        if (trimmed.charAt(idx) == '=') {
+            idx++;
+        } else if (trimmed.charAt(idx) == '<' && idx + 1 < length && trimmed.charAt(idx + 1) == '-') {
+            idx += 2;
+        } else {
+            return false;
+        }
+        while (idx < length && Character.isWhitespace(trimmed.charAt(idx))) {
+            idx++;
+        }
+        if (!trimmed.startsWith("sfcr_", idx)) {
+            return false;
+        }
+        idx += 5;
+        if (trimmed.startsWith("set", idx)) {
+            idx += 3;
+        } else if (trimmed.startsWith("matrix", idx)) {
+            idx += 6;
+        } else {
+            return false;
+        }
+        while (idx < length && Character.isWhitespace(trimmed.charAt(idx))) {
+            idx++;
+        }
+        return idx < length && trimmed.charAt(idx) == '(';
     }
 
     static TemplateBlockType detectTemplateBlockType(String text) {
@@ -563,7 +610,7 @@ public final class SFCRTemplateMerger {
             if (t.startsWith("@")) {
                 return i;
             }
-            if (t.matches("^[A-Za-z_][A-Za-z0-9_\\s-]*<-\\s*sfcr_(set|matrix)\\s*\\(.*$")) {
+            if (looksLikeRStyleAssignmentStart(t)) {
                 return i;
             }
         }

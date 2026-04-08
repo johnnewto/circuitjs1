@@ -219,4 +219,38 @@ class SFCRHandlerDispatchTest {
         assertTrue(result.blockDumps.isEmpty(),
                 "Unknown R-style assignment should not create parsed SFCR blocks");
     }
+
+    @Test
+    @DisplayName("mixed equals and arrow sfcr_set assignments all parse")
+    void mixedEqualsAndArrowSfcrSetAssignmentsParse() {
+        String text =
+                "growth_eqs <- sfcr_set(\n" +
+                "  Yk ~ Ske + INke - INk[-1],\n" +
+                "  Ske ~ beta*Sk + (1-beta)*Sk[-1]*(1 + (GRpr + RA)),\n" +
+                "  INke ~ INk[-1] + gamma*(INkt - INk[-1])\n" +
+                ")\n\n" +
+                "growth_parameters = sfcr_set(\n" +
+                "  alpha1 ~ 0.75,\n" +
+                "  alpha2 ~ 0.064,\n" +
+                "  beta ~ 0.5,\n" +
+                "  betab ~ 0.4,\n" +
+                "  gamma ~ 0.15\n" +
+                ")\n\n" +
+                "growth_initial <- sfcr_set(\n" +
+                "  sigmase ~ 0.16667,\n" +
+                "  eta ~ 0.04918,\n" +
+                "  phi ~ 0.26417,\n" +
+                "  phit ~ 0.26417\n" +
+                ")\n";
+
+        SFCRParseResult result = SFCRParser.parseToResult(text);
+
+        assertNotNull(result, "Mixed assignment styles should parse successfully");
+        assertNotNull(result.findBlock("equations", "growth_eqs"),
+                "Arrow-assigned equations block should parse");
+        assertNotNull(result.findBlock("equations", "growth_parameters"),
+                "Equals-assigned parameters block should parse");
+        assertNotNull(result.findBlock("equations", "growth_initial"),
+                "Trailing arrow-assigned block should still parse");
+    }
 }

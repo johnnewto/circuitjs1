@@ -31,6 +31,23 @@ class SFCRSyntaxNormalizerTest {
     }
 
     @Test
+    @DisplayName("normalizes equals-assigned sfcr_set to @equations block")
+    void testNormalizeEqualsAssignedSfcrSet() {
+        String rStyle = "growth_parameters = sfcr_set(\n" +
+                "  alpha1 ~ 0.75,\n" +
+                "  alpha2 ~ 0.064\n" +
+                ")";
+
+        SFCRSyntaxNormalizer normalizer = new SFCRSyntaxNormalizer();
+        String normalized = normalizer.normalize(rStyle);
+
+        assertTrue(normalized.contains("@equations growth_parameters"),
+                "Equals-assigned sfcr_set should normalize to an equations block with the assignment name");
+        assertTrue(normalized.contains("0.75"), "Should preserve parameter values");
+        assertTrue(normalized.contains("0.064"), "Should preserve parameter values");
+    }
+
+    @Test
     @DisplayName("normalizes sfcr_matrix to @matrix block")
     void testNormalizeSfcrMatrix() {
         String rStyle = "# [ x=100 y=200 type: transaction_flow ]\n" +
@@ -128,6 +145,21 @@ class SFCRSyntaxNormalizerTest {
         assertNotNull(result, "Should parse successfully");
         SFCRParseResult.BlockDump eqBlock = result.findBlock("equations", "Model");
         assertNotNull(eqBlock, "Should create equations block named 'Model'");
+    }
+
+    @Test
+    @DisplayName("equals-assigned R-style content parses correctly")
+    void testEqualsAssignedNormalizedContentParses() {
+        String rStyle = "growth_parameters = sfcr_set(\n" +
+                "  alpha1 ~ 0.75,\n" +
+                "  beta ~ 0.5\n" +
+                ")";
+
+        SFCRParseResult result = SFCRParser.parseToResult(rStyle);
+
+        assertNotNull(result, "Equals-assigned R-style content should parse successfully");
+        SFCRParseResult.BlockDump eqBlock = result.findBlock("equations", "growth_parameters");
+        assertNotNull(eqBlock, "Should create equations block named 'growth_parameters'");
     }
 
     @Test

@@ -369,17 +369,100 @@ public class RStyleParseService {
         if (block == null) {
             return defaultName;
         }
-        int arrowIdx = block.indexOf("<-");
-        if (arrowIdx < 0) {
+        String firstAssignmentLine = null;
+        String[] lines = block.split("\\r?\\n");
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i] == null ? "" : lines[i].trim();
+            if (looksLikeRStyleAssignmentStart(line)) {
+                firstAssignmentLine = line;
+                break;
+            }
+        }
+        if (firstAssignmentLine == null) {
             return defaultName;
         }
-        String before = block.substring(0, arrowIdx).trim();
-        String[] words = before.split("\\s+");
-        if (words.length == 0) {
+
+        int idx = 0;
+        int length = firstAssignmentLine.length();
+        while (idx < length && Character.isWhitespace(firstAssignmentLine.charAt(idx))) {
+            idx++;
+        }
+        if (idx >= length || !Character.isLetter(firstAssignmentLine.charAt(idx)) && firstAssignmentLine.charAt(idx) != '_') {
             return defaultName;
         }
-        String name = words[words.length - 1].trim();
+
+        int start = idx;
+        idx++;
+        while (idx < length) {
+            char ch = firstAssignmentLine.charAt(idx);
+            if (!Character.isLetterOrDigit(ch) && ch != '_') {
+                break;
+            }
+            idx++;
+        }
+
+        String name = firstAssignmentLine.substring(start, idx).trim();
         return name.isEmpty() ? defaultName : name;
+    }
+
+    private static boolean looksLikeRStyleAssignmentStart(String trimmed) {
+        if (trimmed == null) {
+            return false;
+        }
+        int idx = 0;
+        int length = trimmed.length();
+        while (idx < length && Character.isWhitespace(trimmed.charAt(idx))) {
+            idx++;
+        }
+        if (idx >= length) {
+            return false;
+        }
+
+        char first = trimmed.charAt(idx);
+        if (!Character.isLetter(first) && first != '_') {
+            return false;
+        }
+        idx++;
+        while (idx < length) {
+            char ch = trimmed.charAt(idx);
+            if (!Character.isLetterOrDigit(ch) && ch != '_') {
+                break;
+            }
+            idx++;
+        }
+        while (idx < length && Character.isWhitespace(trimmed.charAt(idx))) {
+            idx++;
+        }
+        if (idx >= length) {
+            return false;
+        }
+
+        if (trimmed.charAt(idx) == '=') {
+            idx++;
+        } else if (trimmed.charAt(idx) == '<' && idx + 1 < length && trimmed.charAt(idx + 1) == '-') {
+            idx += 2;
+        } else {
+            return false;
+        }
+
+        while (idx < length && Character.isWhitespace(trimmed.charAt(idx))) {
+            idx++;
+        }
+        if (!trimmed.startsWith("sfcr_", idx)) {
+            return false;
+        }
+        idx += 5;
+        if (trimmed.startsWith("set", idx)) {
+            idx += 3;
+        } else if (trimmed.startsWith("matrix", idx)) {
+            idx += 6;
+        } else {
+            return false;
+        }
+        while (idx < length && Character.isWhitespace(trimmed.charAt(idx))) {
+            idx++;
+        }
+        return idx < length && trimmed.charAt(idx) == '(';
     }
 
     private boolean parseMetadataLine(String rawLine, SFCRParser.RStyleBlockMetadata metadata) {

@@ -224,10 +224,57 @@ public final class InfoViewerContentBuilder {
         if (trimmedLine.startsWith("@") || trimmedLine.startsWith("#") || trimmedLine.startsWith("%")) {
             return false;
         }
-        if (!trimmedLine.contains("<-")) {
+        int idx = 0;
+        int length = trimmedLine.length();
+        while (idx < length && Character.isWhitespace(trimmedLine.charAt(idx))) {
+            idx++;
+        }
+        if (idx >= length) {
             return false;
         }
-        return trimmedLine.contains("sfcr_set") || trimmedLine.contains("sfcr_matrix");
+        char first = trimmedLine.charAt(idx);
+        if (!Character.isLetter(first) && first != '_') {
+            return false;
+        }
+        idx++;
+        while (idx < length) {
+            char ch = trimmedLine.charAt(idx);
+            if (!Character.isLetterOrDigit(ch) && ch != '_') {
+                break;
+            }
+            idx++;
+        }
+        while (idx < length && Character.isWhitespace(trimmedLine.charAt(idx))) {
+            idx++;
+        }
+        if (idx >= length) {
+            return false;
+        }
+        if (trimmedLine.charAt(idx) == '=') {
+            idx++;
+        } else if (trimmedLine.charAt(idx) == '<' && idx + 1 < length && trimmedLine.charAt(idx + 1) == '-') {
+            idx += 2;
+        } else {
+            return false;
+        }
+        while (idx < length && Character.isWhitespace(trimmedLine.charAt(idx))) {
+            idx++;
+        }
+        if (!trimmedLine.startsWith("sfcr_", idx)) {
+            return false;
+        }
+        idx += 5;
+        if (trimmedLine.startsWith("set", idx)) {
+            idx += 3;
+        } else if (trimmedLine.startsWith("matrix", idx)) {
+            idx += 6;
+        } else {
+            return false;
+        }
+        while (idx < length && Character.isWhitespace(trimmedLine.charAt(idx))) {
+            idx++;
+        }
+        return idx < length && trimmedLine.charAt(idx) == '(';
     }
 
     private static boolean startsUnfencedSankeyBlock(String trimmedLine) {

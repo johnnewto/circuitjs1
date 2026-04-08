@@ -7,7 +7,6 @@
 package com.lushprojects.circuitjs1.client.io;
 
 import java.util.ArrayList;
-import java.util.regex.Pattern;
 
 /**
  * Normalizes SFCR input text by converting R-style syntax to block format.
@@ -18,7 +17,9 @@ import java.util.regex.Pattern;
  * Conversions performed:
  * <ul>
  *   <li>{@code name <- sfcr_set(...)} → {@code @equations name ... @end}</li>
+ *   <li>{@code name = sfcr_set(...)} → {@code @equations name ... @end}</li>
  *   <li>{@code name <- sfcr_matrix(...)} → {@code @matrix name ... @end}</li>
+ *   <li>{@code name = sfcr_matrix(...)} → {@code @matrix name ... @end}</li>
  *   <li>R-style metadata comments {@code # [ x=N y=N type: T ]} are preserved and 
  *       converted to block header attributes</li>
  * </ul>
@@ -94,7 +95,6 @@ public class SFCRSyntaxNormalizer {
                 StringBuilder blockText = new StringBuilder();
                 int parenDepth = 0;
                 boolean inBlock = false;
-                int startLine = i;
 
                 while (i < lines.length) {
                     String blockLine = lines[i];
@@ -151,8 +151,60 @@ public class SFCRSyntaxNormalizer {
      * Check if a line looks like an R-style assignment start.
      */
     private boolean looksLikeRStyleStart(String trimmed) {
-        return (trimmed.contains("<-") && 
-                (trimmed.contains("sfcr_set") || trimmed.contains("sfcr_matrix")));
+        if (trimmed == null) {
+            return false;
+        }
+        int idx = 0;
+        int length = trimmed.length();
+        while (idx < length && Character.isWhitespace(trimmed.charAt(idx))) {
+            idx++;
+        }
+        if (idx >= length) {
+            return false;
+        }
+        char first = trimmed.charAt(idx);
+        if (!Character.isLetter(first) && first != '_') {
+            return false;
+        }
+        idx++;
+        while (idx < length) {
+            char ch = trimmed.charAt(idx);
+            if (!Character.isLetterOrDigit(ch) && ch != '_') {
+                break;
+            }
+            idx++;
+        }
+        while (idx < length && Character.isWhitespace(trimmed.charAt(idx))) {
+            idx++;
+        }
+        if (idx >= length) {
+            return false;
+        }
+        if (trimmed.charAt(idx) == '=') {
+            idx++;
+        } else if (trimmed.charAt(idx) == '<' && idx + 1 < length && trimmed.charAt(idx + 1) == '-') {
+            idx += 2;
+        } else {
+            return false;
+        }
+        while (idx < length && Character.isWhitespace(trimmed.charAt(idx))) {
+            idx++;
+        }
+        if (!trimmed.startsWith("sfcr_", idx)) {
+            return false;
+        }
+        idx += 5;
+        if (trimmed.startsWith("set", idx)) {
+            idx += 3;
+        } else if (trimmed.startsWith("matrix", idx)) {
+            idx += 6;
+        } else {
+            return false;
+        }
+        while (idx < length && Character.isWhitespace(trimmed.charAt(idx))) {
+            idx++;
+        }
+        return idx < length && trimmed.charAt(idx) == '(';
     }
 
     /**
