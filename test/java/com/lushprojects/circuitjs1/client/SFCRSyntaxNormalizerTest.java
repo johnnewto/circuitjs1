@@ -220,4 +220,65 @@ class SFCRSyntaxNormalizerTest {
         assertTrue(normalized.contains("beta"), "Should contain beta");
         assertTrue(normalized.contains("@end"), "Should contain @end");
     }
+
+    @Test
+    @DisplayName("normalizes R-style if expressions to ternary switch equations")
+    void normalizesIfExpressionsToTernarySwitchEquations() {
+        String rStyle =
+            "Switches <- sfcr_set(\n" +
+            "  z2a ~ if (BLR[-1] > (top + .05)) {1} else {0},\n" +
+            "  z1b ~ if (BLR[-1] <= (bot -.05)) {1} else {0}\n" +
+            ")\n";
+
+        String normalized = new SFCRSyntaxNormalizer().normalize(rStyle);
+
+        assertTrue(normalized.contains("z2a ~ (last(BLR) > (top + 0.05)) ? 1 : 0 ; mode=voltage ; initial=0  # Switch"),
+            "if/else switch rows should normalize to ternary form with last() and initial=0");
+        assertTrue(normalized.contains("z1b ~ (last(BLR) <= (bot - 0.05)) ? 1 : 0 ; mode=voltage ; initial=0  # Switch"),
+            "Negative leading decimals should normalize to explicit 0-prefixed literals");
+    }
+
+        @Test
+        @DisplayName("merges duplicate simple assignments into initial metadata")
+        void mergesDuplicateSimpleAssignmentsIntoInitialMetadata() {
+        String rStyle =
+            "growth_eqs <- sfcr_set(\n" +
+            "  ADDl ~ 1 + rate,\n" +
+            "  Ske ~ beta*Sk\n" +
+            ")\n\n" +
+            "growth_initial <- sfcr_set(\n" +
+            "  ADDl ~ 0.04592,\n" +
+            "  Ske ~ 22222\n" +
+            ")\n";
+
+        String normalized = new SFCRSyntaxNormalizer().normalize(rStyle);
+
+        assertTrue(normalized.contains("ADDl ~ 1 + rate ; mode=voltage ; initial=0.04592"),
+            "Duplicate ADDl assignment should become initial metadata on the first row");
+        assertTrue(normalized.contains("Ske ~ beta*Sk ; mode=voltage ; initial=22222"),
+            "Duplicate Ske assignment should become initial metadata on the first row");
+        assertFalse(normalized.contains("@equations growth_initial"),
+            "A block reduced to duplicate initial assignments should be removed entirely");
+        }
+
+        @Test
+        @DisplayName("duplicate non-simple assignment is kept as comment with appended exception")
+        void duplicateNonSimpleAssignmentBecomesCommentWithException() {
+        String rStyle =
+            "growth_eqs <- sfcr_set(\n" +
+            "  INke ~ INk[-1] + gamma*(INkt - INk[-1])\n" +
+            ")\n\n" +
+            "growth_initial <- sfcr_set(\n" +
+            "  INke ~ Ske + 10\n" +
+            ")\n";
+
+            String normalized = new SFCRSyntaxNormalizer().normalize(rStyle);
+
+            assertTrue(normalized.contains("@equations growth_initial"),
+                "Second block should be preserved");
+            assertTrue(normalized.contains("# INke ~ Ske + 10"),
+                "Duplicate non-simple assignment should be preserved as a comment");
+            assertTrue(normalized.contains("Exception caught: Duplicate variable 'INke'"),
+                "Duplicate non-simple assignment comment should append the duplicate-variable message");
+        }
 }

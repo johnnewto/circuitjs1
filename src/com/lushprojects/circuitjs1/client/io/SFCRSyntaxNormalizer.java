@@ -7,6 +7,7 @@
 package com.lushprojects.circuitjs1.client.io;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * Normalizes SFCR input text by converting R-style syntax to block format.
@@ -44,12 +45,8 @@ public class SFCRSyntaxNormalizer {
             return input;
         }
 
-        // Fast path: no R-style content
-        if (!containsRStyleContent(input)) {
-            return input;
-        }
-
-        return normalizeRStyleBlocks(input);
+        String normalized = containsRStyleContent(input) ? normalizeRStyleBlocks(input) : input;
+        return mergeDuplicateInitialAssignments(normalized);
     }
 
     /**
@@ -145,6 +142,321 @@ public class SFCRSyntaxNormalizer {
         flushPendingComments(result, pendingComments);
 
         return result.toString();
+    }
+
+    private String mergeDuplicateInitialAssignments(String input) {
+        if (input == null || input.isEmpty()) {
+            return input;
+        }
+
+        String[] lines = input.split("\n", -1);
+        ArrayList<String> mergedLines = new ArrayList<String>();
+        HashMap<String, EquationRowRef> firstRows = new HashMap<String, EquationRowRef>();
+
+        boolean inEquationsBlock = false;
+        String currentBlockName = "";
+        int blockStartIndex = -1;
+        int activeRowCount = 0;
+        boolean removedDuplicateRowsInBlock = false;
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            String trimmed = line.trim();
+
+            if (!inEquationsBlock) {
+                String directive = extractDirective(trimmed);
+                if ("@equations".equals(directive) || "@parameters".equals(directive)) {
+                    inEquationsBlock = true;
+                    currentBlockName = extractBlockName(trimmed, directive);
+                    blockStartIndex = mergedLines.size();
+                    activeRowCount = 0;
+                    removedDuplicateRowsInBlock = false;
+                }
+                mergedLines.add(line);
+                continue;
+            }
+
+            if ("@end".equals(extractDirective(trimmed))) {
+                if (activeRowCount == 0 && removedDuplicateRowsInBlock) {
+                    while (mergedLines.size() > blockStartIndex) {
+                        mergedLines.remove(mergedLines.size() - 1);
+                    }
+                } else {
+                    mergedLines.add(line);
+                }
+                inEquationsBlock = false;
+                currentBlockName = "";
+                blockStartIndex = -1;
+                activeRowCount = 0;
+                removedDuplicateRowsInBlock = false;
+                continue;
+            }
+
+            if (trimmed.isEmpty() || trimmed.startsWith("#") || trimmed.startsWith("%")) {
+                mergedLines.add(line);
+                continue;
+            }
+
+            ParsedEquationRow row = parseEquationRow(line);
+            if (row == null || row.outputName.isEmpty()) {
+                mergedLines.add(line);
+                continue;
+            }
+
+            EquationRowRef firstRow = firstRows.get(row.outputName);
+            if (firstRow == null) {
+                firstRows.put(row.outputName,
+                    new EquationRowRef(mergedLines.size(), currentBlockName, row.hasInitialValue));
+                mergedLines.add(line);
+                activeRowCount++;
+                continue;
+            }
+
+            String duplicateError = getDuplicateAssignmentError(row, firstRow, i + 1);
+            if (duplicateError != null) {
+                mergedLines.add(commentOutDuplicateLine(line, duplicateError));
+                continue;
+            }
+
+            mergedLines.set(firstRow.lineIndex,
+                appendInitialMetadata(mergedLines.get(firstRow.lineIndex), row.expression));
+            firstRow.hasInitialValue = true;
+            removedDuplicateRowsInBlock = true;
+        }
+
+        if (inEquationsBlock && activeRowCount == 0 && removedDuplicateRowsInBlock) {
+            while (mergedLines.size() > blockStartIndex) {
+                mergedLines.remove(mergedLines.size() - 1);
+            }
+        }
+
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < mergedLines.size(); i++) {
+            if (i > 0) {
+                result.append("\n");
+            }
+            result.append(mergedLines.get(i));
+        }
+        return result.toString();
+    }
+
+    private ParsedEquationRow parseEquationRow(String line) {
+        if (line == null) {
+            return null;
+        }
+
+        String working = line.trim();
+        if (working.isEmpty() || working.startsWith("#") || working.startsWith("%")) {
+            return null;
+        }
+
+        int commentIdx = working.indexOf('#');
+        if (commentIdx > 0) {
+            working = working.substring(0, commentIdx).trim();
+        }
+        if (working.isEmpty()) {
+            return null;
+        }
+
+        String[] parts = null;
+        if (working.contains("~")) {
+            parts = working.split("~", 2);
+        } else if (working.contains("=")) {
+            parts = working.split("=", 2);
+        }
+        if (parts == null || parts.length != 2) {
+            return null;
+        }
+
+        String leftPart = parts[0].trim();
+        String rightPart = parts[1].trim();
+
+        String exprText = rightPart;
+        boolean hasInitialValue = false;
+        int metaIdx = rightPart.indexOf(';');
+        if (metaIdx >= 0) {
+            exprText = rightPart.substring(0, metaIdx).trim();
+            String metaText = rightPart.substring(metaIdx + 1).trim();
+            String[] metaParts = metaText.split(";");
+            for (int i = 0; i < metaParts.length; i++) {
+                String token = metaParts[i].trim();
+                int eq = token.indexOf('=');
+                if (eq > 0) {
+                    String key = token.substring(0, eq).trim().toLowerCase();
+                    if ("initial".equals(key)) {
+                        hasInitialValue = true;
+                    }
+                }
+            }
+        }
+
+        String[] lhsAliasParts = splitDifferenceLeftAlias(leftPart);
+        String[] nameParts = SFCRUtil.parseCombinedName(lhsAliasParts[0]);
+        String outputName = SFCRUtil.normalizeVariableName(nameParts[0]);
+        if (outputName.isEmpty()) {
+            return null;
+        }
+
+        return new ParsedEquationRow(outputName, exprText, hasInitialValue);
+    }
+
+    private String[] splitDifferenceLeftAlias(String left) {
+        if (left == null) {
+            return new String[] { "", null };
+        }
+
+        String trimmed = left.trim();
+        if (trimmed.isEmpty()) {
+            return new String[] { "", null };
+        }
+
+        int minusIdx = trimmed.indexOf('-');
+        if (minusIdx <= 0) {
+            return new String[] { trimmed, null };
+        }
+        if (minusIdx + 1 < trimmed.length() && trimmed.charAt(minusIdx + 1) == '>') {
+            return new String[] { trimmed, null };
+        }
+        if (trimmed.indexOf("-||-") >= 0) {
+            return new String[] { trimmed, null };
+        }
+
+        String candidateName = trimmed.substring(0, minusIdx).trim();
+        String candidateOffset = trimmed.substring(minusIdx + 1).trim();
+        if (candidateOffset.isEmpty() || !SFCRUtil.isValidIdentifier(candidateName)) {
+            return new String[] { trimmed, null };
+        }
+
+        return new String[] { candidateName, candidateOffset };
+    }
+
+    private boolean isSimpleNumericAssignment(String expression) {
+        if (expression == null) {
+            return false;
+        }
+        String trimmed = expression.trim();
+        if (trimmed.isEmpty()) {
+            return false;
+        }
+        try {
+            Double.parseDouble(trimmed);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private String getDuplicateAssignmentError(ParsedEquationRow row, EquationRowRef firstRow, int lineNumber) {
+        if (!isSimpleNumericAssignment(row.expression)) {
+            return "Duplicate variable '" + row.outputName + "' at line " + lineNumber
+                + " must be a simple numeric assignment to become an initial value";
+        }
+        if (row.hasInitialValue) {
+            return "Duplicate variable '" + row.outputName + "' at line " + lineNumber
+                + " cannot itself define an initial value";
+        }
+        if (firstRow.hasInitialValue) {
+            return "Duplicate variable '" + row.outputName + "' at line " + lineNumber
+                + " conflicts with an earlier initial value in block '" + firstRow.blockName + "'";
+        }
+        return null;
+    }
+
+    private String commentOutDuplicateLine(String line, String message) {
+        String trimmed = line == null ? "" : line.trim();
+        if (trimmed.endsWith(",")) {
+            trimmed = trimmed.substring(0, trimmed.length() - 1).trim();
+        }
+        return "  # " + trimmed + "  Exception caught: " + message;
+    }
+
+    private String appendInitialMetadata(String line, String initialValue) {
+        String value = initialValue == null ? "" : initialValue.trim();
+        int commentIdx = line.indexOf('#');
+        String comment = "";
+        String base = line;
+        if (commentIdx >= 0) {
+            comment = line.substring(commentIdx).trim();
+            base = line.substring(0, commentIdx);
+        }
+
+        base = trimTrailingWhitespace(base);
+        base = base + " ; initial=" + value;
+
+        if (comment.isEmpty()) {
+            return base;
+        }
+        return base + "  " + comment;
+    }
+
+    private String trimTrailingWhitespace(String value) {
+        if (value == null || value.isEmpty()) {
+            return "";
+        }
+        int end = value.length();
+        while (end > 0 && Character.isWhitespace(value.charAt(end - 1))) {
+            end--;
+        }
+        return value.substring(0, end);
+    }
+
+    private String extractDirective(String trimmed) {
+        if (trimmed == null || trimmed.isEmpty() || !trimmed.startsWith("@")) {
+            return null;
+        }
+        int end = trimmed.indexOf(' ');
+        if (end < 0) {
+            end = trimmed.length();
+        }
+        return trimmed.substring(0, end).toLowerCase();
+    }
+
+    private String extractBlockName(String trimmed, String directive) {
+        if (trimmed == null || directive == null) {
+            return "";
+        }
+        String remainder = trimmed.substring(directive.length()).trim();
+        if (remainder.isEmpty()) {
+            return "";
+        }
+
+        String[] parts = remainder.split("\\s+");
+        StringBuilder name = new StringBuilder();
+        for (int i = 0; i < parts.length; i++) {
+            String part = parts[i];
+            if (part.startsWith("x=") || part.startsWith("y=")) {
+                break;
+            }
+            if (name.length() > 0) {
+                name.append(" ");
+            }
+            name.append(part);
+        }
+        return name.toString();
+    }
+
+    private static class ParsedEquationRow {
+        final String outputName;
+        final String expression;
+        final boolean hasInitialValue;
+
+        ParsedEquationRow(String outputName, String expression, boolean hasInitialValue) {
+            this.outputName = outputName;
+            this.expression = expression;
+            this.hasInitialValue = hasInitialValue;
+        }
+    }
+
+    private static class EquationRowRef {
+        final int lineIndex;
+        final String blockName;
+        boolean hasInitialValue;
+
+        EquationRowRef(int lineIndex, String blockName, boolean hasInitialValue) {
+            this.lineIndex = lineIndex;
+            this.blockName = blockName;
+            this.hasInitialValue = hasInitialValue;
+        }
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.lushprojects.circuitjs1.client.io.sfcr.handlers;
 
 import com.lushprojects.circuitjs1.client.io.SFCRParser;
+import com.lushprojects.circuitjs1.client.io.SFCRUtil;
 import com.lushprojects.circuitjs1.client.io.sfcr.ParseResult;
 import com.lushprojects.circuitjs1.client.io.sfcr.SFCRParseContext;
 
@@ -114,7 +115,7 @@ public class EquationsBlockParseHandler implements SFCRBlockParseHandler {
                 String[] lhsAliasParts = ctx.splitDifferenceLeftAlias(leftPart);
                 boolean hasDifferenceAlias = lhsAliasParts[1] != null && !lhsAliasParts[1].isEmpty();
 
-                String[] nameParts = SFCRParser.parseCombinedNameLocal(lhsAliasParts[0]);
+                String[] nameParts = SFCRUtil.parseCombinedName(lhsAliasParts[0]);
                 String name = ctx.normalizeVariableName(nameParts[0]);
 
                 String targetName = "";
@@ -124,6 +125,7 @@ public class EquationsBlockParseHandler implements SFCRBlockParseHandler {
 
                 String expr = ctx.normalizeExpression(exprText);
                 expr = ctx.rewriteLookupCalls(expr, blockName);
+                boolean isSwitchExpr = SFCRUtil.isZeroOneConditionalExpression(expr);
 
                 outputNames.add(name);
                 if (hasDifferenceAlias) {
@@ -133,7 +135,7 @@ public class EquationsBlockParseHandler implements SFCRBlockParseHandler {
                     equations.add(expr);
                 }
 
-                int mode = SFCRParser.parseModeOrdinal(rowMeta.get("mode"));
+                int mode = SFCRUtil.parseModeOrdinal(rowMeta.get("mode"));
                 if (mode == 0 && !targetName.isEmpty()) {
                     mode = 1;
                 }
@@ -163,11 +165,15 @@ public class EquationsBlockParseHandler implements SFCRBlockParseHandler {
                 String initEq = rowMeta.get("initial");
                 if (initEq != null && !initEq.trim().isEmpty()) {
                     initEq = ctx.rewriteLookupCalls(initEq, blockName);
+                } else if (isSwitchExpr) {
+                    initEq = "0";
                 }
                 initialEquations.add((initEq != null) ? initEq : "");
 
                 if (inlineComment != null && !inlineComment.isEmpty() && !ctx.hasHint(name)) {
                     ctx.registerHint(name, inlineComment);
+                } else if (isSwitchExpr && !ctx.hasHint(name)) {
+                    ctx.registerHint(name, "Switch");
                 }
             }
 

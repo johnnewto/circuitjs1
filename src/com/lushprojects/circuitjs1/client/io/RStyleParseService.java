@@ -301,10 +301,11 @@ public class RStyleParseService {
             if (callback != null) {
                 expr = callback.rewriteLookupCalls(expr, blockName);
             }
+            boolean isSwitchExpr = SFCRUtil.isZeroOneConditionalExpression(expr);
             int mode = currentSectionMode;
             String inlineMode = inlineMeta.get("mode");
             if (inlineMode != null && !inlineMode.isEmpty()) {
-                mode = SFCRParser.parseModeOrdinal(inlineMode);
+                mode = SFCRUtil.parseModeOrdinal(inlineMode);
             }
 
             String initialEq = inlineMeta.get("initial");
@@ -312,6 +313,8 @@ public class RStyleParseService {
                 if (callback != null) {
                     initialEq = callback.rewriteLookupCalls(initialEq, blockName);
                 }
+            } else if (isSwitchExpr) {
+                initialEq = "0";
             }
 
             normalized.append("  ").append(name).append(" ~ ").append(expr)
@@ -335,6 +338,9 @@ public class RStyleParseService {
 
             if (inlineComment != null) {
                 inlineComment = inlineComment.trim();
+            }
+            if ((inlineComment == null || inlineComment.isEmpty()) && isSwitchExpr) {
+                inlineComment = "Switch";
             }
             if (inlineComment != null && !inlineComment.isEmpty()) {
                 normalized.append("  # ").append(inlineComment);

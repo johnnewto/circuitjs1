@@ -333,6 +333,28 @@ public class SFCRUtil {
      * {@code ∫()} → {@code integrate()}.
      */
     public static String normalizeExpression(String expr) {
+        return normalizeExpressionInternal(expr, true);
+    }
+
+    public static boolean isZeroOneConditionalExpression(String expr) {
+        if (expr == null) {
+            return false;
+        }
+        String trimmed = expr.trim();
+        int q = findTopLevelChar(trimmed, '?');
+        if (q < 0) {
+            return false;
+        }
+        int colon = findMatchingTernaryColon(trimmed, q + 1);
+        if (colon < 0) {
+            return false;
+        }
+        String whenTrue = trimmed.substring(q + 1, colon).trim();
+        String whenFalse = trimmed.substring(colon + 1).trim();
+        return isNumericLiteral(whenTrue, 1) && isNumericLiteral(whenFalse, 0);
+    }
+
+    private static String normalizeExpressionInternal(String expr, boolean allowConditionalRewrite) {
         if (expr == null) return "";
 
         // Protect already-escaped backslash forms first
@@ -360,6 +382,186 @@ public class SFCRUtil {
         expr = expr.replace("d(", "diff(");
         expr = expr.replace("∫(", "integrate(");
 
+        expr = normalizeLaggedReferences(expr);
+        expr = normalizeLeadingDecimalLiterals(expr);
+
+        if (allowConditionalRewrite) {
+            String ternary = rewriteRStyleIfElseToTernary(expr);
+            if (ternary != null) {
+                expr = ternary;
+            }
+        }
+
         return expr.trim();
+    }
+
+    private static String rewriteRStyleIfElseToTernary(String expr) {
+        String trimmed = expr == null ? "" : expr.trim();
+        if (!trimmed.startsWith("if")) {
+            return null;
+        }
+
+        int condOpen = trimmed.indexOf('(');
+        if (condOpen < 0) {
+            return null;
+        }
+        int condClose = findMatchingParen(trimmed, condOpen);
+        if (condClose < 0) {
+            return null;
+        }
+
+        String prefix = trimmed.substring(0, condOpen).trim();
+        if (!"if".equals(prefix)) {
+            return null;
+        }
+
+        int trueOpen = skipWhitespace(trimmed, condClose + 1);
+        if (trueOpen >= trimmed.length() || trimmed.charAt(trueOpen) != '{') {
+            return null;
+        }
+        int trueClose = findMatchingBrace(trimmed, trueOpen);
+        if (trueClose < 0) {
+            return null;
+        }
+
+        int elseIdx = skipWhitespace(trimmed, trueClose + 1);
+        if (!trimmed.startsWith("else", elseIdx)) {
+            return null;
+        }
+        int falseOpen = skipWhitespace(trimmed, elseIdx + 4);
+        if (falseOpen >= trimmed.length() || trimmed.charAt(falseOpen) != '{') {
+            return null;
+        }
+        int falseClose = findMatchingBrace(trimmed, falseOpen);
+        if (falseClose < 0) {
+            return null;
+        }
+        if (skipWhitespace(trimmed, falseClose + 1) != trimmed.length()) {
+            return null;
+        }
+
+        String condition = normalizeExpressionInternal(trimmed.substring(condOpen + 1, condClose), false);
+        String whenTrue = normalizeExpressionInternal(trimmed.substring(trueOpen + 1, trueClose), true);
+        String whenFalse = normalizeExpressionInternal(trimmed.substring(falseOpen + 1, falseClose), true);
+        return "(" + condition + ") ? " + whenTrue + " : " + whenFalse;
+    }
+
+    private static String normalizeLaggedReferences(String expr) {
+        StringBuilder out = new StringBuilder();
+        int i = 0;
+        while (i < expr.length()) {
+            char c = expr.charAt(i);
+            if (!isIdentifierStart(c)) {
+                out.append(c);
+                i++;
+                continue;
+            }
+
+            int start = i;
+            i++;
+            while (i < expr.length() && isIdentifierPart(expr.charAt(i))) {
+                i++;
+            }
+            String ident = expr.substring(start, i);
+
+            int afterIdent = skipWhitespace(expr, i);
+            if (afterIdent + 3 < expr.length() && expr.startsWith("[-1]", afterIdent)) {
+                out.append("last(").append(ident).append(")");
+                i = afterIdent + 4;
+                continue;
+            }
+            if (afterIdent + 3 < expr.length() && expr.startsWith("(-1)", afterIdent)) {
+                out.append("last(").append(ident).append(")");
+                i = afterIdent + 4;
+                continue;
+            }
+
+            out.append(ident);
+        }
+        return out.toString();
+    }
+
+    private static String normalizeLeadingDecimalLiterals(String expr) {
+        String normalized = expr.replaceAll("\\s-\\.([0-9]+)", " - 0.$1");
+        return normalized.replaceAll("(?<![0-9A-Za-z_])\\.([0-9]+)", "0.$1");
+    }
+
+    private static int skipWhitespace(String text, int index) {
+        int i = index;
+        while (i < text.length() && Character.isWhitespace(text.charAt(i))) {
+            i++;
+        }
+        return i;
+    }
+
+    private static int findMatchingBrace(String text, int openIndex) {
+        int depth = 0;
+        for (int i = openIndex; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '{') {
+                depth++;
+            } else if (c == '}') {
+                depth--;
+                if (depth == 0) {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    }
+
+    private static int findTopLevelChar(String text, char target) {
+        int parenDepth = 0;
+        int braceDepth = 0;
+        int bracketDepth = 0;
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '(') parenDepth++;
+            else if (c == ')') parenDepth--;
+            else if (c == '{') braceDepth++;
+            else if (c == '}') braceDepth--;
+            else if (c == '[') bracketDepth++;
+            else if (c == ']') bracketDepth--;
+            else if (c == target && parenDepth == 0 && braceDepth == 0 && bracketDepth == 0) return i;
+        }
+        return -1;
+    }
+
+    private static int findMatchingTernaryColon(String text, int startIndex) {
+        int nestedTernary = 0;
+        int parenDepth = 0;
+        int braceDepth = 0;
+        int bracketDepth = 0;
+        for (int i = startIndex; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '(') parenDepth++;
+            else if (c == ')') parenDepth--;
+            else if (c == '{') braceDepth++;
+            else if (c == '}') braceDepth--;
+            else if (c == '[') bracketDepth++;
+            else if (c == ']') bracketDepth--;
+            else if (parenDepth == 0 && braceDepth == 0 && bracketDepth == 0) {
+                if (c == '?') {
+                    nestedTernary++;
+                } else if (c == ':') {
+                    if (nestedTernary == 0) {
+                        return i;
+                    }
+                    nestedTernary--;
+                }
+            }
+        }
+        return -1;
+    }
+
+    private static boolean isNumericLiteral(String text, int expected) {
+        if (text == null || text.isEmpty()) {
+            return false;
+        }
+        try {
+            return Math.abs(Double.parseDouble(text.trim()) - expected) < 1e-12;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

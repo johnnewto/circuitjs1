@@ -120,4 +120,24 @@ class SFCRParserRobustnessTest {
         assertNotNull(second);
         assertNotNull(second.findBlock("equations", "Extreme"));
     }
+
+        @Test
+        @DisplayName("strict mode: duplicate non-simple initial import is preserved as commented warning")
+        void duplicateNonSimpleInitialImportIsCommentedInStrictMode() {
+                String text =
+                                "growth_eqs <- sfcr_set(\n" +
+                                "  INke ~ INk[-1] + gamma*(INkt - INk[-1])\n" +
+                                ")\n\n" +
+                                "growth_initial <- sfcr_set(\n" +
+                                "  INke ~ Ske + 10\n" +
+                                ")\n";
+
+                SFCRParseResult result = SFCRParser.parseToResult(text, true);
+
+                assertNotNull(result);
+                SFCRParseResult.BlockDump block = result.findBlock("equations", "growth_initial");
+                assertNotNull(block);
+                assertTrue(block.dumpString.contains("Exception\\scaught:\\sDuplicate\\svariable"),
+                                "Commented duplicate warning should survive parse-to-result in strict mode");
+        }
 }

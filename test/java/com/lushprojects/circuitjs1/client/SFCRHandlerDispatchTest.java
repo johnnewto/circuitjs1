@@ -253,4 +253,30 @@ class SFCRHandlerDispatchTest {
         assertNotNull(result.findBlock("equations", "growth_initial"),
                 "Trailing arrow-assigned block should still parse");
     }
+
+    @Test
+    @DisplayName("duplicate simple imports merge into first equations block initial values")
+    void duplicateSimpleImportsMergeIntoInitialValues() {
+        String text =
+                "growth_eqs <- sfcr_set(\n" +
+                "  ADDl ~ base + premium,\n" +
+                "  Ske ~ beta*Sk\n" +
+                ")\n\n" +
+                "growth_initial <- sfcr_set(\n" +
+                "  ADDl ~ 0.04592,\n" +
+                "  Ske ~ 22222\n" +
+                ")\n";
+
+        SFCRParseResult result = SFCRParser.parseToResult(text);
+
+        assertNotNull(result);
+        SFCRParseResult.BlockDump eqBlock = result.findBlock("equations", "growth_eqs");
+        assertNotNull(eqBlock, "Primary equations block should still parse");
+        assertTrue(eqBlock.dumpString.contains("0.04592"),
+                "Merged dump should contain ADDl initial value");
+        assertTrue(eqBlock.dumpString.contains("22222"),
+                "Merged dump should contain Ske initial value");
+        assertNull(result.findBlock("equations", "growth_initial"),
+                "Duplicate-only initial block should be removed after merge");
+    }
 }

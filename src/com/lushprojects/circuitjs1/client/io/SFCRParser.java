@@ -14,8 +14,6 @@ import java.util.Vector;
 
 import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.registry.HintRegistry;
-import com.lushprojects.circuitjs1.client.util.*;
-import com.lushprojects.circuitjs1.client.elements.economics.*;
 import com.lushprojects.circuitjs1.client.elements.misc.*;
 import com.lushprojects.circuitjs1.client.io.sfcr.ParseResult;
 import com.lushprojects.circuitjs1.client.io.sfcr.ParseWarning;
@@ -201,10 +199,17 @@ public class SFCRParser {
         String currentBlock = null;
         int currentBlockStartLine = -1;
         boolean hasValidRows = false;
+        boolean hasCommentedExceptionRows = false;
 
         for (int i = 0; i < lines.length; i++) {
             String line = lines[i];
             String trimmed = line.trim();
+
+            if (currentBlock != null && trimmed.startsWith("#")
+                    && trimmed.toLowerCase().contains("exception caught:")) {
+                hasCommentedExceptionRows = true;
+                continue;
+            }
 
             if (trimmed.isEmpty() || trimmed.startsWith("#") || trimmed.startsWith("%")) {
                 continue;
@@ -216,13 +221,14 @@ public class SFCRParser {
                     if (currentBlock == null) {
                         throw new ParseException("Unexpected @end at line " + (i + 1));
                     }
-                    if (requiresRows(currentBlock) && !hasValidRows) {
+                    if (requiresRows(currentBlock) && !hasValidRows && !hasCommentedExceptionRows) {
                         throw new ParseException("Block " + currentBlock + " at line " +
                                 currentBlockStartLine + " contains no valid rows");
                     }
                     currentBlock = null;
                     currentBlockStartLine = -1;
                     hasValidRows = false;
+                    hasCommentedExceptionRows = false;
                     continue;
                 }
 
@@ -234,6 +240,7 @@ public class SFCRParser {
                     currentBlock = directive;
                     currentBlockStartLine = i + 1;
                     hasValidRows = false;
+                    hasCommentedExceptionRows = false;
                     continue;
                 }
 
