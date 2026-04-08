@@ -502,6 +502,51 @@ public class Expr {
     boolean isLinearCombination() {
 	return getLinearTerms(new java.util.HashMap<String, Double>()) != null;
     }
+
+	/**
+	 * Returns true when this expression contains a same-period node reference in
+	 * the denominator of a division subtree.
+	 */
+	public boolean hasSamePeriodReferenceInDenominator() {
+		return hasSamePeriodReferenceInDenominatorInternal(false, false);
+	}
+
+	private boolean hasSamePeriodReferenceInDenominatorInternal(boolean inDenominator, boolean inHistoricalContext) {
+		boolean childHistoricalContext = inHistoricalContext;
+		switch (type) {
+		case E_LAST:
+		case E_LAG:
+		case E_INTEGRATE:
+		case E_DIFF:
+		case E_SMOOTH:
+		case E_DELAY:
+			childHistoricalContext = true;
+			break;
+		default:
+			break;
+		}
+
+		if (inDenominator && !inHistoricalContext && (type == E_NODE_REF || type == E_GSLOT) && nodeName != null) {
+			String trimmed = nodeName.trim();
+			if (!trimmed.isEmpty())
+				return true;
+		}
+
+		if (children == null || children.size() == 0)
+			return false;
+
+		if (type == E_DIV && children.size() >= 2) {
+			if (children.firstElement().hasSamePeriodReferenceInDenominatorInternal(false, childHistoricalContext))
+				return true;
+			return children.lastElement().hasSamePeriodReferenceInDenominatorInternal(true, childHistoricalContext);
+		}
+
+		for (int i = 0; i < children.size(); i++) {
+			if (children.get(i).hasSamePeriodReferenceInDenominatorInternal(inDenominator, childHistoricalContext))
+				return true;
+		}
+		return false;
+	}
     
     /**
      * Extract linear terms from this expression.

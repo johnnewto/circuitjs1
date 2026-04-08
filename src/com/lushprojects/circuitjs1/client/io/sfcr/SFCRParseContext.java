@@ -778,6 +778,18 @@ public class SFCRParseContext {
             sliderVarNames, sliderValues, initialEquations, invisibleOverride);
         
         if (build == null) return;
+
+        if (build.truncated) {
+            String warning = "Equation table '" + name + "' exceeded the maximum of "
+                + build.finalRowCount + " rows; imported first " + build.finalRowCount
+                + " of " + build.originalRowCount + " rows.";
+            addWarning(-1, warning);
+            if (sim != null) {
+                sim.alertOrWarn(warning);
+            } else {
+                CirSim.console("SFCRParser warning: " + warning);
+            }
+        }
         
         createElementFromDump("equations", name, build.dump, build.y2, uidFromFile);
     }

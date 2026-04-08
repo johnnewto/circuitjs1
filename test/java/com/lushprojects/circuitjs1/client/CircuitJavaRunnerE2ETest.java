@@ -183,6 +183,116 @@ class CircuitJavaRunnerE2ETest {
         }
 
     @Test
+    @DisplayName("runner keeps same-period voltage aliases in sync in MNA mode")
+    void runnerKeepsSamePeriodVoltageAliasesInSyncInMnaMode() throws Exception {
+        Path circuitFile = Files.createTempFile("runner-mna-alias-", ".md");
+        Path outputCsv = Files.createTempFile("runner-mna-alias-", ".csv");
+        try {
+            String circuit = "# CircuitJS1 SFCR Export\n"
+                + "# Generated from circuit simulation\n\n"
+                + "```{r}\n"
+                + "@init\n"
+                + "  timestep: 1\n"
+                + "  voltageUnit: $\n"
+                + "  timeUnit: yr\n"
+                + "  showDots: true\n"
+                + "  showVolts: true\n"
+                + "  showValues: true\n"
+                + "  showPower: false\n"
+                + "  autoAdjustTimestep: false\n"
+                + "  equationTableMnaMode: true\n"
+                + "  EqnTable Newton Jacobian: true\n"
+                + "  equationTableTolerance: 0.000001\n"
+                + "  lookupMode: pwl\n"
+                + "  lookupClamp: true\n"
+                + "  convergenceCheckThreshold: 100\n"
+                + "  infoViewerUpdateIntervalMs: 200\n"
+                + "  Auto-Open Model Info on Load: true\n"
+                + "@end\n"
+                + "```\n\n"
+                + "```{r}\n"
+                + "EqnTable <- sfcr_set(\n"
+                + "  # [ x=96 y=96 invisible=false ]\n"
+                + "  src ~ last(src) + 1,  # [mode=voltage, initial=0 ]\n"
+                + "  alias ~ src  # [mode=voltage, initial=0 ]\n"
+                + ")\n"
+                + "```\n\n"
+                + "```{r}\n"
+                + "@circuit\n"
+                + "207 0 0 64 0 164 src U:srcUid\n"
+                + "207 0 32 64 32 164 alias U:aliasUid\n"
+                + "@end\n"
+                + "```\n";
+
+            Files.write(circuitFile, circuit.getBytes(StandardCharsets.UTF_8));
+
+            CircuitJavaRunner.main(new String[] {
+                circuitFile.toString(),
+                outputCsv.toString(),
+                "4"
+            });
+
+            List<String> lines = Files.readAllLines(outputCsv, StandardCharsets.UTF_8);
+            assertEquals(5, lines.size(), "Expected header plus four data rows");
+
+            String[] headers = lines.get(0).split(",");
+            int srcIdx = indexOf(headers, "src");
+            int aliasIdx = indexOf(headers, "alias");
+            assertTrue(srcIdx >= 0, "Expected src column");
+            assertTrue(aliasIdx >= 0, "Expected alias column");
+
+            for (int i = 1; i < lines.size(); i++) {
+                String[] cols = lines.get(i).split(",", -1);
+                double expected = (double) (i - 1);
+                assertEquals(expected, Double.parseDouble(cols[srcIdx]), 1e-9,
+                    "Unexpected src at row " + i);
+                assertEquals(expected, Double.parseDouble(cols[aliasIdx]), 1e-9,
+                    "Alias should track src at row " + i);
+            }
+        } finally {
+            Files.deleteIfExists(circuitFile);
+            Files.deleteIfExists(outputCsv);
+        }
+    }
+
+    @Test
+    @DisplayName("growth model keeps Ekd matched to Eks with Jacobian enabled")
+    void growthModelKeepsEkdMatchedToEksWithJacobianEnabled() throws Exception {
+        Path outputTable = Files.createTempFile("runner-growth-ekd-", ".tsv");
+        try {
+            CircuitJavaRunner.main(new String[] {
+                    getGrowthDebugCircuitPath().toString(),
+                    outputTable.toString(),
+                    "3",
+                    "tsv"
+            });
+
+            List<String> lines = Files.readAllLines(outputTable, StandardCharsets.UTF_8);
+            assertTrue(lines.size() >= 4, "Expected header plus three data rows");
+
+            String[] headers = lines.get(0).split("\t");
+            int ekdIdx = indexOf(headers, "Ekd");
+            int eksIdx = indexOf(headers, "Eks");
+            int peIdx = indexOf(headers, "Pe");
+            assertTrue(ekdIdx >= 0, "Expected Ekd column");
+            assertTrue(eksIdx >= 0, "Expected Eks column");
+            assertTrue(peIdx >= 0, "Expected Pe column");
+
+            for (int i = 1; i <= 3; i++) {
+                String[] cols = lines.get(i).split("\t", -1);
+                double ekd = parseSiValue(cols[ekdIdx]);
+                double eks = parseSiValue(cols[eksIdx]);
+                double pe = parseSiValue(cols[peIdx]);
+                assertEquals(eks, ekd, Math.max(1e-6, Math.abs(eks) * 1e-9),
+                        "Expected Ekd to match Eks at row " + i);
+                assertTrue(pe > 0, "Expected Pe to stay positive at row " + i);
+            }
+        } finally {
+            Files.deleteIfExists(outputTable);
+        }
+    }
+
+    @Test
     @DisplayName("emits world2 formatted six-column table when format is world2")
     void emitsWorld2FormattedSixColumnTableWhenFormatIsWorld2() throws Exception {
         Path outputTable = Files.createTempFile("runner-world2-", ".tsv");
@@ -270,5 +380,29 @@ class CircuitJavaRunnerE2ETest {
         Path world2Circuit = Paths.get(projectDir, "test/resources/sfcr/world2_fixture.md");
         assertTrue(Files.exists(world2Circuit), "Expected world2 fixture to exist: " + world2Circuit);
         return world2Circuit;
+    }
+
+    private Path getGrowthDebugCircuitPath() {
+        String projectDir = System.getProperty("projectDir");
+        Path growthCircuit = Paths.get(projectDir, "src/com/lushprojects/circuitjs1/public/circuits/economics/1debug.md");
+        assertTrue(Files.exists(growthCircuit), "Expected growth debug circuit to exist: " + growthCircuit);
+        return growthCircuit;
+    }
+
+    private double parseSiValue(String raw) {
+        String text = raw.trim();
+        if (text.isEmpty()) {
+            return 0.0;
+        }
+        String[] parts = text.split("\\s+");
+        double value = Double.parseDouble(parts[0]);
+        if (parts.length < 2) {
+            return value;
+        }
+        if ("K".equals(parts[1])) return value * 1_000.0;
+        if ("M".equals(parts[1])) return value * 1_000_000.0;
+        if ("B".equals(parts[1])) return value * 1_000_000_000.0;
+        if ("T".equals(parts[1])) return value * 1_000_000_000_000.0;
+        return value;
     }
 }

@@ -1,5 +1,253 @@
-# CircuitJS1 SFCR Export
-# Godley and Lavoie (2007) Chapter 11: GROWTH
+```{r}
+growth_eqs <- sfcr_set(
+  # [ x=-80 y=1240 uid=THSfHC invisible=false ]
+  Yk ~ Ske + INke - last(INk),  # 11.1 : Real output  [mode=voltage, initial=12088400 ]
+  Ske ~ beta*Sk + (1-beta)*last(Sk)*(1 + (GRpr + RA)),  # 11.2 : Expected real sales  [mode=voltage, initial=12028300 ]
+  INke ~ last(INk) + gamma*(INkt - last(INk)),  # 11.3 : Long-run inventory target  [mode=voltage, initial=2405660 ]
+  INkt ~ sigmat*Ske,  # 11.4 : Short-run inventory target  [mode=voltage, initial=2064890 ]
+  INk ~ last(INk) + Yk - Sk - NPL/UC,  # 11.5 : Actual real inventories  [mode=param, initial=2064890 ]
+  Kk ~ last(Kk)*(1 + GRk),  # 11.6 : Real capital stock  [mode=param, initial=17774838 ]
+  GRk ~ gamma0 + gammau*last(U) - gammar*RRl,  # 11.7 : Growth of real capital stock  [mode=param, initial=0.03001 ]
+  U ~ Yk/last(Kk),  # 11.8 : Capital utilization proxy  [mode=param, initial=0.70073 ]
+  RRl ~ ((1 + Rl)/(1 + PI)) - 1,  # 11.9 : Real interest rate on loans  [mode=param, initial=0.06246 ]
+  PI ~ (P - last(P))/last(P),  # 11.10 : Rate of price inflation  [mode=param, initial=0.0026 ]
+  # Ik ~ (Kk - Kk[-1]) + delta*Kk[-1]
+  Ik ~ (Kk - last(Kk)) + delta * last(Kk),  # [mode=param, initial=2357910 ]
+  # Box 11.2 : Firms equations
+  # ---------------------------
+  Sk ~ Ck + Gk + Ik,  # 11.12 : Actual real sales  [mode=voltage, initial=12028300 ]
+  S ~ Sk*P,  # 11.13 : Value of realized sales  [mode=param, initial=86270300 ]
+  IN ~ INk*UC,  # 11.14 : Inventories valued at current cost  [mode=param, initial=11585400 ]
+  INV ~ Ik*P,  # 11.15 : Nominal gross investment  [mode=param, initial=16911600 ]
+  K ~ Kk*P,  # 11.16 : Nomincal value of fixed capital  [mode=param, initial=127486471 ]
+  Y ~ Sk*P + (INk - last(INk))*UC,  # 11.17 : Nomincal GDP  [mode=param, initial=86607700 ]
+  # Box 11.3 : Firms equations
+  # ---------------------------
+  # 11.18 : Real wage aspirations
+  omegat ~ exp(omega0 + omega1*log(PR) + omega2*log(ER + z3*(1 - ER) - z4*BANDt + z5*BANDb)),  # [mode=param, initial=112852 ]
+  ER ~ last(N)/last(Nfe),  # 11.19 : Employment rate  [mode=param, initial=1 ]
+  # 11.20 : Switch variables
+  z3a ~ (ER > (1-BANDb)) ? 1 : 0,  # Switch  [mode=param, initial=0 ]
+  z3b ~ (ER <= (1+BANDt)) ? 1 : 0,  # Switch  [mode=param, initial=0 ]
+  z3 ~ z3a * z3b,  # [mode=param ]
+  z4 ~ (ER > (1+BANDt)) ? 1 : 0,  # Switch  [mode=param, initial=0 ]
+  z5 ~ (ER < (1-BANDb)) ? 1 : 0,  # Switch  [mode=param, initial=0 ]
+  W ~ last(W) + omega3*(omegat*last(P) - last(W)),  # 11.21 : Nominal wage  [mode=param, initial=777968 ]
+  PR ~ last(PR)*(1 + GRpr),  # 11.22 : Labor productivity  [mode=param, initial=138659 ]
+  Nt ~ Yk/PR,  # 11.23 : Desired employment  [mode=voltage, initial=87.181 ]
+  N ~ last(N) + etan*(Nt - last(N)),  # 11.24 : Actual employment --> etan not in the book  [mode=voltage, initial=87.181 ]
+  WB ~ N*W,  # 11.25 : Nominal wage bill  [mode=voltage, initial=67824000 ]
+  UC ~ WB/Yk,  # 11.26 : Actual unit cost  [mode=param, initial=5.6106 ]
+  NUC ~ W/PR,  # 11.27 : Normal unit cost  [mode=param, initial=5.6106 ]
+  NHUC ~ (1 - sigman)*NUC + sigman*(1 + last(Rln))*last(NUC),  # 11.28 : Normal historic unit cost  [mode=param, initial=5.6735 ]
+  # Box 11.4 : Firms equations
+  # ---------------------------
+  P ~ (1 + phi)*NHUC,  # 11.29 : Normal-cost pricing  [mode=param, initial=7.1723 ]
+  phi ~ last(phi) + eps2*(last(phit) - last(phi)),  # 11.30 : Actual mark-up --> eps2 not in the book  [mode=param, initial=0.26417 ]
+  # 11.31 : Ideal mark-up
+  # phit ~ (FDf + FUft + Rl[-1]*(Lfd[-1] - IN[-1]))/((1 - sigmase)*Ske*UC + (1 + Rl[-1])*sigmase*Ske*UC[-1]),
+  phit ~ (FUft + FDf + last(Rl)*(last(Lfd) - last(IN))) / ((1 - sigmase)*Ske*UC + (1 + last(Rl))*sigmase*Ske*last(UC)),  # [mode=param, initial=0.26417 ]
+  HCe ~ (1 - sigmase)*Ske*UC + (1 + last(Rl))*sigmase*Ske*last(UC),  # 11.32 : Expected historical costs  [mode=param ]
+  sigmase ~ last(INk)/Ske,  # 11.33 : Opening inventories to expected sales ratio  [mode=param, initial=0.16667 ]
+  Fft ~ FUft + FDf + last(Rl)*(last(Lfd) - last(IN)),  # 11.34 : Planned entrepeneurial profits of firmss  [mode=param, initial=18013600 ]
+  FUft ~ psiu*last(INV),  # 11.35 : Planned retained earnings of firms  [mode=param, initial=15066200 ]
+  FDf ~ psid*last(Ff),  # 11.36 : Dividends of firms  [mode=param, initial=2670970 ]
+  # Box 11.5 : Firms equations
+  # ---------------------------
+  Ff ~ S - WB + (IN - last(IN)) - last(Rl)*last(IN),  # 11.37 : Realized entrepeneurial profits  [mode=param, initial=18081100 ]
+  FUf ~ Ff - FDf - last(Rl)*(last(Lfd) - last(IN)) + last(Rl)*NPL,  # 11.38 : Retained earnings of firms  [mode=param, initial=15153800 ]
+  # 11.39 : Demand for loans by firms
+  Lfd ~ last(Lfd) + INV + (IN - last(IN)) - FUf - (Eks - last(Eks))*Pe - NPL,  # [mode=param, initial=15962900 ]
+  # NPL ~ NPLk*Lfs[-1]
+  NPL ~ NPLk * last(Lfs),  # [mode=param, initial=309158 ]
+  Eks ~ last(Eks) + ((1 - psiu)*last(INV))/Pe,  # 11.41 : Supply of equities issued by firms  [mode=voltage, initial=5112.6001 ]
+  # Rk ~ FDf/(Pe[-1]*Ekd[-1])
+  Rk ~ FDf/(last(Pe) * last(Ekd)),  # [mode=param, initial=0.03008 ]
+  PE ~ Pe/(Ff/last(Eks)),  # 11.43 : Price earnings ratio  [mode=param, initial=5.07185 ]
+  Q ~ (Eks*Pe + Lfd)/(K + IN),  # 11.44 : Tobins Q ratio  [mode=param, initial=0.77443 ]
+  # Box 11.6 : Households equations
+  # --------------------------------
+  # YP ~ WB + FDf + FDb + Rm[-1]*Md[-1] + Rb[-1]*Bhd[-1] + BLs[-1]
+  YP ~ WB + FDf + FDb + last(Rm)*last(Mh) + last(Rb)*last(Bhd) + last(BLs),  # [mode=voltage, initial=73158700 ]
+  # YP ~ WB + FDf + FDb + Rm[-1]*Mh[-1] + Rb[-1]*Bhd[-1] + BLs[-1] + NL,
+  TX ~ \theta*YP,  # 11.46 : Income taxes  [mode=voltage, initial=17024100 ]
+  YDr ~ YP - TX - last(Rl)*last(Lhd),  # 11.47 : Regular disposable income  [mode=voltage, initial=56446400 ]
+  YDhs ~ YDr + CG,  # 11.48 : Haig-Simons disposable income  [mode=param ]
+  # !1.49 : Capital gains
+  CG ~ (Pbl - last(Pbl))*last(BLd) + (Pe - last(Pe))*last(Ekd) + (OFb - last(OFb)),  # [mode=param ]
+  # 11.50 : Wealth
+  V ~ last(V) + YDr - CONS + (Pbl - last(Pbl))*last(BLd) + (Pe - last(Pe))*last(Ekd) + (OFb - last(OFb)),  # [mode=voltage, initial=165438779 ]
+  Vk ~ V/P,  # 11.51 : Real staock of wealth  [mode=param, initial=23066350 ]
+  CONS ~ Ck*P,  # 11.52 : Consumption  [mode=param, initial=52603100 ]
+  Ck ~ \alpha_1*(YDkre + NLk) + \alpha_2*last(Vk),  # 11.53 : Real consumption  [mode=voltage, initial=7334240 ]
+  YDkre ~ eps*YDkr + (1 - eps)*(last(YDkr)*(1 + GRpr)),  # 11.54 : Expected real regular disposable income  [mode=voltage, initial=7813290 ]
+  # YDkr ~ YDr/P - (P - P[-1])*Vk[-1]/P
+  YDkr ~ YDr/P - ((P - last(P)) * last(Vk))/P,  # [mode=voltage, initial=7813270 ]
+  # Box 11.7 : Households equations
+  # --------------------------------
+  GL ~ eta*YDr,  # 11.56 : Gross amount of new personal loans ---> new eta here  [mode=voltage, initial=2775900 ]
+  eta ~ eta0 - etar*RRl,  # 11.57 : New loans to personal income ratio  [mode=param, initial=0.04918 ]
+  NL ~ GL - REP,  # 11.58 : Net amount of new personal loans  [mode=voltage, initial=683593 ]
+  REP ~ deltarep*last(Lhd),  # 11.59 : Personal loans repayments  [mode=param, initial=2092310 ]
+  Lhd ~ last(Lhd) + GL - REP,  # 11.60 : Demand for personal loans  [mode=param, initial=21606600 ]
+  NLk ~ NL/P,  # 11.61 : Real amount of new personal loans  [mode=voltage, initial=95311 ]
+  # BUR ~ (REP + Rl[-1]*Lhd[-1])/YDr[-1]
+  BUR ~ (REP + last(Rl) * last(Lhd)) / last(YDr),  # [mode=param, initial=0.06324 ]
+  # Box 11.8 : Households equations - portfolio decisions
+  # -----------------------------------------------------
+  # 11.64 : Demand for bills
+  # YDr/V
+  # Md ~ Vfma[-1] * (lambda10 + lambda11*Rm[-1] - lambda12 * Rb[-1] - lambda13 * Rbl[-1] - lambda14 * Rk[-1] + lambda25 * (YP/V)),
+  Bhd ~ last(Vfma)*(lambda20 + lambda22*last(Rb) - lambda21*last(Rm) - lambda24*last(Rk) - lambda23*last(Rbl) - lambda25*(YDr/V)),  # [mode=param, initial=33439320 ]
+  # 11.65 : Demand for bonds
+  BLd ~ last(Vfma)*(lambda30 - lambda32*last(Rb) - lambda31*last(Rm) - lambda34*last(Rk) + lambda33*last(Rbl) - lambda35*(YDr/V))/Pbl,  # [mode=param, initial=840742 ]
+  # 11.66 : Demand for equities - normalized to get the price of equitities
+  Pe ~ last(Vfma)*(lambda40 - lambda42*last(Rb) - lambda41*last(Rm) + lambda44*last(Rk) - lambda43*last(Rbl) - lambda45*(YDr/V))/Ekd,  # [mode=voltage, initial=17937 ]
+  Mh ~ Vfma - Bhd - Pe*Ekd - Pbl*BLd + Lhd,  # 11.67 : Money deposits - as a residual  [mode=param, initial=40510800 ]
+  Vfma ~ V - Hhd - OFb,  # 11.68 : Investible wealth  [mode=param, initial=159334599 ]
+  VfmaA ~ Mh + Bhd + Pbl * BLd + Pe * Ekd,  # [mode=param ]
+  Hhd ~ lambdac*CONS,  # 11.69 : Households demand for cash  [mode=param, initial=2630150 ]
+  Ekd ~ Eks,  # 11.70 : Stock market equilibrium  [mode=voltage, initial=5112.6001 ]
+  # Box 11.9 : Governments equations
+  # ---------------------------------
+  G ~ Gk*P,  # 11.71 : Pure government expenditures  [mode=param, initial=16755600 ]
+  Gk ~ last(Gk)*(1 + GRg),  # 11.72 : Real government expenditures  [mode=param, initial=2336160 ]
+  PSBR ~ G + last(BLs) + last(Rb)*(last(Bbs) + last(Bhs)) - TX,  # 11.73 : Government deficit --> BLs[-1] missing in the book  [mode=param, initial=1894780 ]
+  # 11.74 : New issues of bills
+  Bs ~ last(Bs) + G - TX - (BLs - last(BLs))*Pbl + last(Rb)*(last(Bhs) + last(Bbs)) + last(BLs),  # [mode=param, initial=42484800 ]
+  GD ~ Bbs + Bhs + BLs*Pbl + Hs,  # 11.75 : Government debt  [mode=param, initial=57728700 ]
+  # Box 11.10 : The Central banks equations
+  # ----------------------------------------
+  Fcb ~ last(Rb)*last(Bcbd),  # 11.76 : Central bank profits  [mode=param ]
+  BLs ~ BLd,  # 11.77 : Bonds are supplied on demand  [mode=param, initial=840742 ]
+  Bhs ~ Bhd,  # 11.78 : Household bills supplied on demand  [mode=param, initial=33439320 ]
+  Hhs ~ Hhd,  # 11.79 : Cash supplied on demand --> Mistake on the book  [mode=param, initial=2630150 ]
+  Hbs ~ Hbd,  # 11.80 : Reserves supplied on demand  [mode=param, initial=2025540 ]
+  Hs ~ Hbs + Hhs,  # 11.81 : Total supply of cash  [mode=param, initial=4655690 ]
+  Bcbd ~ Hs,  # 11.82 : Central bankd  [mode=param, initial=4655690 ]
+  Bcbs ~ Bcbd,  # 11.83 : Supply of bills to Central bank  [mode=param, initial=4655690 ]
+  Rb ~ Rbbar,  # 11.84 : Interest rate on bills set exogenously  [mode=param, initial=0.035 ]
+  Rbl ~ Rb + ADDbl,  # 11.85 : Long term interest rate  [mode=param, initial=0.055 ]
+  Pbl ~ 1/Rbl,  # 11.86 : Price of long-term bonds  [mode=param, initial=18.182 ]
+  # Box 11.11 : Commercial Banks equations
+  # ---------------------------------------
+  Ms ~ Mh,  # 11.87 : Bank deposits supplied on demand  [mode=param, initial=40510800 ]
+  Lfs ~ Lfd,  # 11.88 : Loans to firms supplied on demand  [mode=param, initial=15962900 ]
+  Lhs ~ Lhd,  # 11.89 : Personal loans supplied on demand  [mode=param, initial=21606600 ]
+  Hbd ~ ro*Ms,  # 11.90 Reserve requirements of banks  [mode=param, initial=2025540 ]
+  # 11.91 : Bills supplied to banks
+  Bbs ~ last(Bbs) + (Bs - last(Bs)) - (Bhs - last(Bhs)) - (Bcbs - last(Bcbs)),  # [mode=param, initial=4389790 ]
+  # 11.92 : Balance sheet constraint of banks
+  Bbd ~ Ms + OFb - Lfs - Lhs - Hbd,  # [mode=param, initial=4389790 ]
+  BLR ~ Bbd/Ms,  # 11.93 : Bank liquidity ratio  [mode=param, initial=0.1091 ]
+  # 11.94 : Deposit interest rate
+  Rm ~ last(Rm) + z1a*xim1 + z1b*xim2 - z2a*xim1 - z2b*xim2,  # [mode=param, initial=0.0193 ]
+  # 11.95-97 : Mechanism for determining changes to the interest rate on deposits
+  z2a ~ (last(BLR) > (top + 0.05)) ? 1 : 0,  # Switch  [mode=param, initial=0 ]
+  z2b ~ (last(BLR) > top) ? 1 : 0,  # Switch  [mode=param, initial=0 ]
+  z1a ~ (last(BLR) <= bot) ? 1 : 0,  # Switch  [mode=param, initial=0 ]
+  z1b ~ (last(BLR) <= (bot - 0.05)) ? 1 : 0,  # Switch  [mode=param, initial=0 ]
+  # Box 11.12 : Commercial banks equations
+  # ---------------------------------------
+  Rl ~ Rm + ADDl,  # 11.98 : Loan interest rate  [mode=param, initial=0.06522 ]
+  OFbt ~ NCAR*(last(Lfs) + last(Lhs)),  # 11.99 : Long-run own funds target  [mode=param, initial=3638100 ]
+  OFbe ~ last(OFb) + betab*(OFbt - last(OFb)),  # 11.100 : Short-run own funds target  [mode=param, initial=3474030 ]
+  FUbt ~ OFbe - last(OFb) + NPLke*last(Lfs),  # 11.101 : Target retained earnings of banks  [mode=param ]
+  NPLke ~ epsb*last(NPLke) + (1 - epsb)*last(NPLk),  # 11.102 : Expected proportion of non-performaing loans  [mode=param, initial=0.02 ]
+  # FDb ~ Fb - FUb
+  FDb ~ Fb - FUb,  # [mode=param, initial=1325090 ]
+  Fbt ~ lambdab*last(Y) + (OFbe - last(OFb) + NPLke*last(Lfs)),  # 11.104 : Target profits of banks  [mode=param, initial=1744140 ]
+  # 11.105 : Actual profits of banks
+  Fb ~ last(Rl)*(last(Lfs) + last(Lhs) - NPL) + last(Rb)*last(Bbd) - last(Rm)*last(Ms),  # [mode=param, initial=1744130 ]
+  # 11.106 : Lending mark-up over deposit rate
+  ADDl ~ (Fbt - last(Rb)*last(Bbd) + last(Rm)*(last(Ms) - (1 - NPLke)*last(Lfs) - last(Lhs)))/((1 - NPLke)*last(Lfs) + last(Lhs)),  # --> I added the lag term to Rm  [mode=param, initial=0.04592 ]
+  FUb ~ Fb - lambdab*last(Y),  # 11.107 : Actual retained earnings  [mode=param, initial=419039 ]
+  OFb ~ last(OFb) + FUb - NPL,  # 11.108 : Own funds of banks  [mode=param, initial=3474030 ]
+  CAR ~ OFb/(Lfs + Lhs),  # [mode=param, initial=0.09245 ]
+  Vf ~ IN + K - Lfd - Ekd * Pe,  # Firm's wealth (memo for matrices)  [mode=param, initial=31361792 ]
+  # Vg ~ -Bs - BLs * Pbl
+  Ls ~ Lfs + Lhs  # Loans supply (memo for matrices)  [mode=param, initial=37569500 ]
+)
+```
+
+```{r}
+growth_parameters <- sfcr_set(
+  # [ x=-80 y=1496 uid=oMialb invisible=false ]
+  \alpha_1 ~ 0.75,  # [mode=param ]
+  \alpha_2 ~ 0.064,  # [mode=param ]
+  beta ~ 0.5,  # [mode=param ]
+  betab ~ 0.4,  # [mode=param ]
+  gamma ~ 0.15,  # [mode=param ]
+  gamma0 ~ 0.00122,  # [mode=param ]
+  gammar ~ 0.1,  # [mode=param ]
+  gammau ~ 0.05,  # [mode=param ]
+  delta ~ 0.10667,  # [mode=param ]
+  deltarep ~ 0.1,  # [mode=param ]
+  eps ~ 0.5,  # [mode=param ]
+  eps2 ~ 0.8,  # [mode=param ]
+  epsb ~ 0.25,  # [mode=param ]
+  epsrb ~ 0.9,  # [mode=param ]
+  eta0 ~ 0.07416,  # [mode=param ]
+  etan ~ 0.6,  # [mode=param ]
+  etar ~ 0.4,  # [mode=param ]
+  \theta ~ 0.22844,  # [mode=param ]
+  # lambda10 ~ -0.17071,
+  # lambda11 ~ 0,
+  # lambda12 ~ 0,
+  # lambda13 ~ 0,
+  # lambda14 ~ 0,
+  # lambda15 ~ 0.18,
+  lambda20 ~ 0.25,  # [mode=param ]
+  lambda21 ~ 2.2,  # [mode=param ]
+  lambda22 ~ 6.6,  # [mode=param ]
+  lambda23 ~ 2.2,  # [mode=param ]
+  lambda24 ~ 2.2,  # [mode=param ]
+  lambda25 ~ 0.1,  # [mode=param ]
+  lambda30 ~ -0.04341,  # [mode=param ]
+  lambda31 ~ 2.2,  # [mode=param ]
+  lambda32 ~ 2.2,  # [mode=param ]
+  lambda33 ~ 6.6,  # [mode=param ]
+  lambda34 ~ 2.2,  # [mode=param ]
+  lambda35 ~ 0.1,  # [mode=param ]
+  lambda40 ~ 0.67132,  # [mode=param ]
+  lambda41 ~ 2.2,  # [mode=param ]
+  lambda42 ~ 2.2,  # [mode=param ]
+  lambda43 ~ 2.2,  # [mode=param ]
+  lambda44 ~ 6.6,  # [mode=param ]
+  lambda45 ~ 0.1,  # [mode=param ]
+  lambdab ~ 0.0153,  # [mode=param ]
+  lambdac ~ 0.05,  # [mode=param ]
+  xim1 ~ 0.0008,  # [mode=param ]
+  xim2 ~ 0.0007,  # [mode=param ]
+  ro ~ 0.05,  # [mode=param ]
+  sigman ~ 0.1666,  # [mode=param ]
+  sigmat ~ 0.2,  # [mode=param ]
+  psid ~ 0.15255,  # [mode=param ]
+  psiu ~ 0.92,  # [mode=param ]
+  omega0 ~ -0.20594,  # [mode=param ]
+  omega1 ~ 1,  # [mode=param ]
+  omega2 ~ 2,  # [mode=param ]
+  omega3 ~ 0.45621,  # [mode=param ]
+  # Exogenous
+  ADDbl ~ 0.02,  # [mode=param, initial=0.02 ]
+  BANDt ~ 0.01,  # [mode=param, initial=0.01 ]
+  BANDb ~ 0.01,  # [mode=param, initial=0.01 ]
+  bot ~ 0.05,  # [mode=param, initial=0.05 ]
+  GRg ~ 0.03,  # [mode=param, initial=0.03 ]
+  GRpr ~ 0.03,  # [mode=param, initial=0.03 ]
+  Nfe ~ 87.181,  # [mode=param, initial=87.181 ]
+  NCAR ~ 0.1,  # [mode=param, initial=0.1 ]
+  NPLk ~ 0.02,  # [mode=param, initial=0.02 ]
+  Rbbar ~ 0.035,  # [mode=param, initial=0.035 ]
+  Rln ~ 0.07,  # [mode=param, initial=0.07 ]
+  RA ~ 0,  # [mode=param, initial=0 ]
+  # sigmase ~ 0.16667,
+  # eta ~ 0.04918,
+  # phi ~ 0.26417,
+  # phit ~ 0.26417,
+  top ~ 0.12  # [mode=param, initial=0.12 ]
+)
+```
 
 ```{r}
 @init
@@ -23,261 +271,33 @@
 @end
 ```
 
-# GROWTH Model
-
-## Purpose
-
-This circuit file encodes the baseline **GROWTH** model from **Godley and Lavoie (2007), chapter 11** using the same equation set and baseline initial values used in the `sfcr` replication.
-
-It is a large stock-flow consistent model with:
-
-- firms, households, government, central bank, and commercial banks
-- inventories, fixed capital, equities, bills, bonds, deposits, cash, and loans
-- endogenous growth, pricing, portfolio choice, and bank behavior
-
-## Source Note
-
-The equations below follow the `sfcr` article **"Chapter 11: Model GROWTH"**. That implementation notes that a few equations and initial values match Zezza's working code where it differs from the printed book, to obtain a stable baseline simulation.
-
-## Equations
-
-```{r}
-Real_and_Firms_Core <- sfcr_set(
-  # [ x=-3504 y=136 uid=9aijO8 invisible=false ]
-  Yk ~ Ske + INke - last(INk),  # Real output  [mode=voltage, initial=12088400 ]
-  Ske ~ \beta * Sk + (1 - \beta) * last(Sk) * (1 + (GRpr + RA)),  # Expected real sales  [mode=voltage, initial=12028300 ]
-  INke ~ last(INk) + \gamma * (INkt - last(INk)),  # Expected inventories  [mode=voltage, initial=2405660 ]
-  INkt ~ \sigmat * Ske,  # Inventory target  [mode=voltage, initial=2064890 ]
-  INk ~ last(INk) + Yk - Sk - NPL / UC,  # Real inventories  [mode=voltage, initial=2064890 ]
-  Kk ~ last(Kk) * (1 + GRk),  # Real capital stock  [mode=voltage, initial=17774838 ]
-  GRk ~ \gamma0 + \gammau * last(U) - \gammar * RRl,  # Real capital growth rate  [mode=voltage, initial=0.03001 ]
-  U ~ Yk / last(Kk),  # Capacity utilization proxy  [mode=voltage, initial=0.70073 ]
-  RRl ~ ((1 + Rl) / (1 + PI)) - 1,  # Real loan rate  [mode=voltage, initial=0.06246 ]
-  PI ~ (P - last(P)) / last(P),  # Inflation rate  [mode=voltage, initial=0.0026 ]
-  Ik ~ (Kk - last(Kk)) + \delta * last(Kk),  # Real gross investment  [mode=voltage, initial=2357910 ]
-  Sk ~ Ck + Gk + Ik,  # Real sales  [mode=voltage, initial=12028300 ]
-  S ~ Sk * P,  # Nominal sales  [mode=voltage, initial=86270300 ]
-  IN ~ INk * UC,  # Inventories valued at current cost  [mode=voltage, initial=11585400 ]
-  INV ~ Ik * P,  # Nominal gross investment  [mode=voltage, initial=16911600 ]
-  K ~ Kk * P,  # Nominal capital stock  [mode=voltage, initial=127486471 ]
-  Y ~ Sk * P + (INk - last(INk)) * UC,  # Nominal GDP  [mode=voltage, initial=86607700 ] ]
-  \omegat ~ exp(\omega0 + \omega1 * log(PR) + \omega2 * log(ER + z3 * (1 - ER) - z4 * BANDt + z5 * BANDb)),  # hint18  [mode=voltage ]
-  ER ~ last(N) / last(Nfe),  # Employment rate  [mode=voltage, initial=1 ]
-  z3a ~ (ER > (1 - BANDb)) ? 1 : 0,  # Switch  [mode=voltage ]
-  z3b ~ (ER <= (1 + BANDt)) ? 1 : 0,  # Switch  [mode=voltage ]
-  z3 ~ z3a * z3b,  # Switch  [mode=voltage ]
-  z4 ~ (ER > (1 + BANDt)) ? 1 : 0,  # Switch  [mode=voltage ]
-  z5 ~ (ER < (1 - BANDb)) ? 1 : 0,  # Switch  [mode=voltage ]
-  W ~ last(W) + \omega3 * (\omegat * last(P) - last(W)),  # Nominal wage  [mode=voltage, initial=777968 ]
-  PR ~ last(PR) * (1 + GRpr),  # Labor productivity  [mode=voltage, initial=138659 ]
-  Nt ~ Yk / PR,  # Desired employment  [mode=voltage, initial=87.181 ]
-  N ~ last(N) + \etan * (Nt - last(N)),  # Employment  [mode=voltage, initial=87.181 ]
-  WB ~ N * W,  # Wage bill  [mode=voltage, initial=67824000 ]
-  UC ~ WB / Yk,  # Unit cost  [mode=voltage, initial=5.6106 ]
-  NUC ~ W / PR,  # Normal unit cost  [mode=voltage, initial=5.6106 ]
-  NHUC ~ (1 - \sigman) * NUC + \sigman * (1 + last(Rln)) * last(NUC),  # Normal historic unit cost  [mode=voltage, initial=5.6735 ]
-  P ~ (1 + \phi) * NHUC,  # Price level  [mode=voltage, initial=7.1723 ]
-  \phi ~ last(\phi) + \epsilon2 * (last(\phit) - last(\phi)),  # Actual markup  [mode=voltage, initial=0.26417 ]
-  \phit ~ (FUft + FDf + last(Rl) * (last(Lfd) - last(IN))) / ((1 - \sigmase) * Ske * UC + (1 + last(Rl)) * \sigmase * Ske * last(UC)),  # Target markup  [mode=voltage, initial=0.26417 ]
-  HCe ~ (1 - \sigmase) * Ske * UC + (1 + last(Rl)) * \sigmase * Ske * last(UC),  # Expected historical costs  [mode=voltage ]
-  \sigmase ~ last(INk) / Ske,  # Opening inventory ratio  [mode=voltage, initial=0.16667 ]
-  Fft ~ FUft + FDf + last(Rl) * (last(Lfd) - last(IN)),  # Planned entrepreneurial profits  [mode=voltage, initial=18013600 ]
-  FUft ~ \psiu * last(INV),  # Planned retained earnings  [mode=voltage, initial=15066200 ]
-  FDf ~ \psid * last(Ff),  # Firm dividends  [mode=voltage, initial=2670970 ]
-  Ff ~ S - WB + (IN - last(IN)) - last(Rl) * last(IN),  # Firm profits  [mode=voltage, initial=18081100 ]
-  FUf ~ Ff - FDf - last(Rl) * (last(Lfd) - last(IN)) + last(Rl) * NPL,  # Retained earnings of firms  [mode=voltage, initial=15153800 ]
-  Lfd ~ last(Lfd) + INV + (IN - last(IN)) - FUf - (Eks - last(Eks)) * Pe - NPL,  # Firm loan demand  [mode=voltage, initial=15962900 ]
-  NPL ~ NPLk * last(Lfs),  # Non-performing loans  [mode=voltage, initial=309158 ]
-  Eks ~ last(Eks) + ((1 - \psiu) * last(INV)) / Pe,  # Equity supply  [mode=voltage, initial=5112.6001 ]
-  Rk ~ FDf / (last(Pe) * last(Ekd)),  # Dividend yield on equities  [mode=voltage, initial=0.03008 ]
-  PE ~ Pe / (Ff / last(Eks)),  # Price-earnings ratio  [mode=voltage, initial=5.07185 ]
-  Q ~ (Eks * Pe + Lfd) / (K + IN),  # Tobin's q  [mode=voltage, initial=0.77443 ] ]
-  YP ~ WB + FDf + FDb + last(Rm) * last(Mh) + last(Rb) * last(Bhd) + last(BLd),  # hint49  [mode=voltage ]
-  TX ~ \theta * YP,  # Taxes  [mode=voltage, initial=17024100 ]
-  YDr ~ YP - TX - last(Rl) * last(Lhd),  # Regular disposable income  [mode=voltage, initial=56446400 ]
-  YDhs ~ YDr + CG,  # Haig-Simons income  [mode=voltage ]
-  CG ~ (Pbl - last(Pbl)) * last(BLd) + (Pe - last(Pe)) * last(Ekd) + (OFb - last(OFb)),  # Capital gains  [mode=voltage ]
-  V ~ last(V) + YDr - CONS + (Pbl - last(Pbl)) * last(BLd) + (Pe - last(Pe)) * last(Ekd) + (OFb - last(OFb)),  # Household wealth  [mode=voltage, initial=165438779 ]
-  Vk ~ V / P,  # Real wealth  [mode=voltage, initial=23066350 ]
-  CONS ~ Ck * P,  # Consumption  [mode=voltage, initial=52603100 ]
-  Ck ~ \alpha_1 * (YDkre + NLk) + \alpha_2 * last(Vk),  # Real consumption  [mode=voltage, initial=7334240 ]
-  YDkre ~ \epsilon * YDkr + (1 - \epsilon) * (last(YDkr) * (1 + GRpr)),  # Expected real disposable income  [mode=voltage, initial=7813290 ]
-  YDkr ~ YDr / P - ((P - last(P)) * last(Vk)) / P,  # Real regular disposable income  [mode=voltage, initial=7813270 ]
-  GL ~ \eta * YDr,  # Gross new household loans  [mode=voltage, initial=2775900 ]
-  \eta ~ \eta0 - \etar * RRl,  # Loan demand ratio  [mode=voltage, initial=0.04918 ]
-  NL ~ GL - REP,  # Net new household loans  [mode=voltage, initial=683593 ]
-  REP ~ \deltarep * last(Lhd),  # Household loan repayments  [mode=voltage, initial=2092310 ]
-  Lhd ~ last(Lhd) + GL - REP,  # Household loan demand  [mode=voltage, initial=21606600 ]
-  NLk ~ NL / P,  # Real net new household loans  [mode=voltage, initial=95311 ]
-  BUR ~ (REP + last(Rl) * last(Lhd)) / last(YDr),  # Debt service burden  [mode=voltage, initial=0.06324 ]
-  Bhd ~ last(Vfma) * (\lambda20 + \lambda22 * last(Rb) - \lambda21 * last(Rm) - \lambda24 * last(Rk) - \lambda23 * last(Rbl) - \lambda25 * (YDr / V)),  # Household bill holdings  [mode=voltage, initial=33439320 ]
-  BLd ~ last(Vfma) * (\lambda30 - \lambda32 * last(Rb) - \lambda31 * last(Rm) - \lambda34 * last(Rk) + \lambda33 * last(Rbl) - \lambda35 * (YDr / V)) / Pbl,  # Household bond holdings  [mode=voltage, initial=840742 ]
-  Pe ~ last(Vfma) * (\lambda40 - \lambda42 * last(Rb) - \lambda41 * last(Rm) + \lambda44 * last(Rk) - \lambda43 * last(Rbl) - \lambda45 * (YDr / V)) / Ekd,  # Equity price  [mode=voltage, initial=17937 ]
-  Mh ~ Vfma - Bhd - Pe * Ekd - Pbl * BLd + Lhd,  # Household deposits  [mode=voltage, initial=40510800 ]
-  Vfma ~ V - Hhd - OFb,  # Investible wealth  [mode=voltage, initial=159334599 ]
-  VfmaA ~ Mh + Bhd + Pbl * BLd + Pe * Ekd,  # Portfolio memo  [mode=voltage ]
-  Hhd ~ \lambdac * CONS,  # Household cash demand  [mode=voltage, initial=2630150 ]
-  Ekd ~ Eks,  # Equity market clearing  [mode=voltage, initial=5112.6001 ]
-  G ~ Gk * P,  # Government expenditure  [mode=voltage, initial=16755600 ]
-  Gk ~ last(Gk) * (1 + GRg),  # Real government spending  [mode=voltage, initial=2336160 ]
-  PSBR ~ G + last(BLs) + last(Rb) * (last(Bbs) + last(Bhs)) - TX,  # Public sector borrowing requirement  [mode=voltage, initial=1894780 ]
-  Bs ~ last(Bs) + G - TX - (BLs - last(BLs)) * Pbl + last(Rb) * (last(Bhs) + last(Bbs)) + last(BLs),  # Government bills  [mode=voltage, initial=42484800 ]
-  GD ~ Bbs + Bhs + BLs * Pbl + Hs,  # Government debt  [mode=voltage, initial=57728700 ]
-  Fcb ~ last(Rb) * last(Bcbd),  # Central bank profits  [mode=voltage ]
-  BLs ~ BLd,  # Bond supply  [mode=voltage, initial=840742 ]
-  Bhs ~ Bhd,  # Bill supply to households  [mode=voltage, initial=33439320 ]
-  Hhs ~ Hhd,  # Cash supply to households  [mode=voltage, initial=2630150 ]
-  Hbs ~ Hbd,  # Reserve supply  [mode=voltage, initial=2025540 ]
-  Hs ~ Hbs + Hhs,  # High-powered money  [mode=voltage, initial=4655690 ]
-  Bcbd ~ Hs,  # Bills held by central bank  [mode=voltage, initial=4655690 ]
-  Bcbs ~ Bcbd,  # Bills supplied to central bank  [mode=voltage, initial=4655690 ]
-  Rb ~ Rbbar,  # Bill rate  [mode=voltage, initial=0.035 ]
-  Rbl ~ Rb + ADDbl,  # Long bond rate  [mode=voltage, initial=0.055 ]
-  Pbl ~ 1 / Rbl,  # Long bond price  [mode=voltage, initial=18.182 ]
-  Ms ~ Mh,  # Deposit supply  [mode=voltage, initial=40510800 ]
-  Lfs ~ Lfd,  # Firm loans supplied  [mode=voltage, initial=15962900 ]
-  Lhs ~ Lhd,  # Household loans supplied  [mode=voltage, initial=21606600 ]
-  Hbd ~ ro * Ms,  # Required reserves  [mode=voltage, initial=2025540 ]
-  Bbs ~ last(Bbs) + (Bs - last(Bs)) - (Bhs - last(Bhs)) - (Bcbs - last(Bcbs)),  # Bills held by banks  [mode=voltage, initial=4389790 ]
-  Bbd ~ Ms + OFb - Lfs - Lhs - Hbd,  # Bank bill demand constraint  [mode=voltage, initial=4389790 ]
-  BLR ~ Bbd / Ms,  # Bank liquidity ratio  [mode=voltage, initial=0.1091 ]
-  Rm ~ last(Rm) + z1a * \xim1 + z1b * \xim2 - z2a * \xim1 - z2b * \xim2,  # Deposit rate  [mode=voltage, initial=0.0193 ]
-  z2a ~ (last(BLR) > (top + 0.05)) ? 1 : 0,  # Switch  [mode=voltage, initial=0 ]
-  z2b ~ (last(BLR) > top) ? 1 : 0,  # Switch  [mode=voltage, initial=0 ]
-  z1a ~ (last(BLR) <= bot) ? 1 : 0,  # Switch  [mode=voltage, initial=0 ]
-  z1b ~ (last(BLR) <= (bot - 0.05)) ? 1 : 0,  # Switch  [mode=voltage, initial=0 ]
-  Rl ~ Rm + ADDl,  # Loan rate  [mode=voltage, initial=0.06522 ]
-  OFbt ~ NCAR * (last(Lfs) + last(Lhs)),  # Target bank own funds  [mode=voltage, initial=3638100 ]
-  OFbe ~ last(OFb) + \betab * (OFbt - last(OFb)),  # Expected own funds  [mode=voltage, initial=3474030 ]
-  FUbt ~ OFbe - last(OFb) + NPLke * last(Lfs),  # Target retained earnings of banks  [mode=voltage ]
-  NPLke ~ \epsilonb * last(NPLke) + (1 - \epsilonb) * last(NPLk),  # Expected bad loan share  [mode=voltage, initial=0.02 ]
-  FDb ~ Fb - FUb,  # Bank dividends  [mode=voltage, initial=1325090 ]
-  Fbt ~ \lambdab * last(Y) + (OFbe - last(OFb) + NPLke * last(Lfs)),  # Target bank profits  [mode=voltage, initial=1744140 ]
-  Fb ~ last(Rl) * (last(Lfs) + last(Lhs) - NPL) + last(Rb) * last(Bbd) - last(Rm) * last(Ms),  # Bank profits  [mode=voltage, initial=1744130 ]
-  ADDl ~ (Fbt - last(Rb) * last(Bbd) + last(Rm) * (last(Ms) - (1 - NPLke) * last(Lfs) - last(Lhs))) / ((1 - NPLke) * last(Lfs) + last(Lhs)),  # Loan spread  [mode=voltage, initial=0.04592 ]
-  FUb ~ Fb - \lambdab * last(Y),  # Retained earnings of banks  [mode=voltage, initial=419039 ]
-  OFb ~ last(OFb) + FUb - NPL,  # Bank own funds  [mode=voltage, initial=3474030 ]
-  CAR ~ OFb / (Lfs + Lhs),  # Capital adequacy ratio  [mode=voltage, initial=0.09245 ]
-  Vf ~ IN + K - Lfd - Ekd * Pe,  # Firm net worth memo  [mode=voltage, initial=31361792 ]
-  Ls ~ Lfs + Lhs  # Total loan supply  [mode=voltage, initial=37569500 ]
-)
-```
-
-## Parameters
-
-```{r}
-Parameters <- sfcr_set(
-  # [ x=-3488 y=424 uid=8WmQNI invisible=false ]
-  \alpha_1 ~ 0.75,  # Consumption out of expected income  [mode=param ]
-  \alpha_2 ~ 0.064,  # Consumption out of wealth  [mode=param ]
-  \beta ~ 0.5,  # Sales expectation weight  [mode=param ]
-  \betab ~ 0.4,  # Bank own-funds adjustment  [mode=param ]
-  \gamma ~ 0.15,  # Inventory adjustment speed  [mode=param ]
-  \gamma0 ~ 0.00122,  # Autonomous capital growth  [mode=param ]
-  \gammar ~ 0.1,  # Interest sensitivity of growth  [mode=param ]
-  \gammau ~ 0.05,  # Utilization sensitivity of growth  [mode=param ]
-  \delta ~ 0.10667,  # Depreciation rate  [mode=param ]
-  \deltarep ~ 0.1,  # Household repayment rate  [mode=param ]
-  \epsilon ~ 0.5,  # Disposable-income expectation weight  [mode=param ]
-  \epsilon2 ~ 0.83,  # Markup adjustment speed  [mode=param ]
-  \epsilonb ~ 0.25,  # Bank expectations weight  [mode=param ]
-  \eta0 ~ 0.07416,  # Base household loan ratio  [mode=param ]
-  \etan ~ 0.6,  # Employment adjustment speed  [mode=param ]
-  \etar ~ 0.4,  # Loan-rate sensitivity of household borrowing  [mode=param ]
-  \theta ~ 0.22844,  # Tax rate  [mode=param ]
-  \lambda20 ~ 0.25,  # Portfolio coefficient  [mode=param ]
-  \lambda21 ~ 2.2,  # Portfolio coefficient  [mode=param ]
-  \lambda22 ~ 6.6,  # Portfolio coefficient  [mode=param ]
-  \lambda23 ~ 2.2,  # Portfolio coefficient  [mode=param ]
-  \lambda24 ~ 2.2,  # Portfolio coefficient  [mode=param ]
-  \lambda25 ~ 0.1,  # Portfolio coefficient  [mode=param ]
-  \lambda30 ~ -0.04341,  # Portfolio coefficient  [mode=param ]
-  \lambda31 ~ 2.2,  # Portfolio coefficient  [mode=param ]
-  \lambda32 ~ 2.2,  # Portfolio coefficient  [mode=param ]
-  \lambda33 ~ 6.6,  # Portfolio coefficient  [mode=param ]
-  \lambda34 ~ 2.2,  # Portfolio coefficient  [mode=param ]
-  \lambda35 ~ 0.1,  # Portfolio coefficient  [mode=param ]
-  \lambda40 ~ 0.67132,  # Portfolio coefficient  [mode=param ]
-  \lambda41 ~ 2.2,  # Portfolio coefficient  [mode=param ]
-  \lambda42 ~ 2.2,  # Portfolio coefficient  [mode=param ]
-  \lambda43 ~ 2.2,  # Portfolio coefficient  [mode=param ]
-  \lambda44 ~ 6.6,  # Portfolio coefficient  [mode=param ]
-  \lambda45 ~ 0.1,  # Portfolio coefficient  [mode=param ]
-  \lambdab ~ 0.0153,  # Target bank profits to output  [mode=param ]
-  \lambdac ~ 0.05,  # Cash demand ratio  [mode=param ]
-  \xim1 ~ 0.0008,  # Deposit-rate adjustment step 1  [mode=param ]
-  \xim2 ~ 0.0007,  # Deposit-rate adjustment step 2  [mode=param ]
-  ro ~ 0.05,  # Reserve ratio  [mode=param ]
-  \sigman ~ 0.1666,  # Historic cost weight  [mode=param ]
-  \sigmat ~ 0.2,  # Inventory target ratio  [mode=param ]
-  \psid ~ 0.15255,  # Dividend payout from firms  [mode=param ]
-  \psiu ~ 0.92,  # Retained earnings share for firms  [mode=param ]
-  \omega0 ~ -0.20594,  # Wage aspiration coefficient  [mode=param ]
-  \omega1 ~ 1,  # Wage aspiration coefficient  [mode=param ]
-  \omega2 ~ 2,  # Wage aspiration coefficient  [mode=param ]
-  \omega3 ~ 0.45621,  # Wage adjustment speed  [mode=param ]
-  ADDbl ~ 0.02,  # Bond spread over bills  [mode=param ]
-  BANDt ~ 0.01,  # Employment band top  [mode=param ]
-  BANDb ~ 0.01,  # Employment band bottom  [mode=param ]
-  bot ~ 0.05,  # Lower bank liquidity trigger  [mode=param ]
-  GRg ~ 0.03,  # Government real spending growth  [mode=param ]
-  GRpr ~ 0.03,  # Productivity growth  [mode=param ]
-  Nfe ~ 87.181,  # Full employment labor force  [mode=param ]
-  NCAR ~ 0.1,  # Target capital adequacy ratio  [mode=param ]
-  NPLk ~ 0.02,  # Default share on firm loans  [mode=param ]
-  Rbbar ~ 0.035,  # Policy bill rate  [mode=param ]
-  Rln ~ 0.07,  # Normal loan rate  [mode=param ]
-  RA ~ 0,  # Real adjustment term  [mode=param ]
-  top ~ 0.12  # Upper bank liquidity trigger  [mode=param ]
-)
-```
-
 ```{r}
 @scope Embedded_Scope_1 position=-1
-  x1: -2544
-  y1: 64
-  x2: -1840
-  y2: 416
-  elmUid: rGhA1I
-  speed: 2
-  flags: x6001206
-  source: uid:GLG11_01 value:0
-  trace: uid:GLG11_02 value:0
-  trace: uid:GLG11_03 value:0
-  trace: uid:GLG11_04 value:0
+  x1: 160
+  y1: 1568
+  x2: 736
+  y2: 1904
+  elmUid: GrNukH
+  speed: 1
+  flags: x2001206
+  source: uid:rVIsJ- value:0
 @end
 ```
 
 ```{r}
 @zorder
-  uid:GLG11_T1 z:0
-  uid:GLG11_T2 z:1
-  uid:GLG11_T3 z:2
-  uid:GLG11_01 z:3
-  uid:GLG11_02 z:4
-  uid:GLG11_03 z:5
-  uid:GLG11_04 z:6
-  uid:GLG11_05 z:7
-  uid:GLG11_06 z:8
-  uid:GLG11_Box z:9
-  uid:rGhA1I z:10
-  uid:9aijO8 z:11
-  uid:8WmQNI z:12
+  uid:oMialb z:0
+  uid:THSfHC z:1
+  uid:GrNukH z:2
+  uid:rVIsJ- z:3
+  uid:Dfrh1z z:4
 @end
 ```
 
 ```{r}
 @circuit
-x -2735 501 -2344 504 4 18 Godley\sand\sLavoie\s(2007)\sChapter\s11:\sGROWTH 808080FF U:GLG11_T1 Z:0
-x -2735 528 -2397 531 4 12 Baseline\sspecification\sbased\son\sthe\ssfcr\sreplication\sof\sthe\smodel 808080FF U:GLG11_T2 Z:1
-x -2735 549 -2258 552 4 12 Includes\sfirms,\shouseholds,\sgovt,\scentral\sbank,\sbanks,\sgrowth,\spricing,\sand\sportfolio\schoice 808080FF U:GLG11_T3 Z:2
-207 -2768 704 -2704 704 164 Y U:GLG11_01 Z:3
-207 -2768 736 -2704 736 164 V U:GLG11_02 Z:4
-207 -2768 768 -2704 768 164 Bs U:GLG11_03 Z:5
-207 -2768 800 -2704 800 164 Ls U:GLG11_04 Z:6
-207 -2816 656 -2752 656 164 P U:GLG11_05 Z:7
-207 -2816 688 -2752 688 164 Rl U:GLG11_06 Z:8
-431 -2976 480 -2944 512 0 100 true false U:GLG11_Box Z:9
+207 208 1520 272 1520 164 Yk U:rVIsJ- Z:3
+207 448 1520 528 1520 164 K U:Dfrh1z Z:4
 @end
 ```
 

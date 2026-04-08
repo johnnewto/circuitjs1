@@ -73,7 +73,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     private static final int FLAG_INVISIBLE = 4;
     
     /** Maximum number of equation rows supported */
-    public static final int MAX_ROWS = 128;
+    public static final int MAX_ROWS = 256;
 
     /** Default FLOW shunt resistance to avoid loading by default. */
     private static final double DEFAULT_FLOW_SHUNT_RESISTANCE = 1;

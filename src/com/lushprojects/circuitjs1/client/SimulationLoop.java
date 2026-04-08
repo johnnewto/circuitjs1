@@ -261,6 +261,11 @@ class SimulationLoop {
                 CircuitMatrixOps.luSolve(sim.getSolverMatrixState().circuitMatrix, sim.getSolverMatrixState().circuitMatrixSize, sim.getSolverMatrixState().circuitPermute,
                         sim.getSolverMatrixState().circuitRightSide);
                 applySolvedRightSide(sim.getSolverMatrixState().circuitRightSide);
+                // Keep circuit-global value slots aligned with the latest solved node voltages
+                // between Newton subiterations.  Equation expressions may have been resolved
+                // to E_GSLOT fast-path lookups during analysis, and in MNA mode those slots
+                // must reflect the current operating point rather than the last converged step.
+                sim.getCircuitValueSlotManager().syncAllSlots();
                 if (!sim.getSolverMatrixState().circuitNonLinear) {
                     if (sim.getSolverMatrixState().circuitMatrixSize == 1) {
                         CirSim.console("[runCircuit] circuitNonLinear=false, exiting after first iteration");

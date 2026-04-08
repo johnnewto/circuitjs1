@@ -1,10 +1,112 @@
     var markdownEditorCm = null;
+    var markdownWithRModeConfigured = false;
+
+    function escapeRegExp(text) {
+      return String(text || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function ensureMarkdownWithRMode() {
+      if (markdownWithRModeConfigured || typeof CodeMirror === 'undefined') return;
+
+      CodeMirror.defineMode('markdown_with_r_chunks', function(config) {
+        var markdownMode = CodeMirror.getMode(config, {
+          name: 'markdown',
+          fencedCodeBlockHighlighting: true,
+          fencedCodeBlockDefaultMode: 'text/plain'
+        });
+        var rMode = CodeMirror.getMode(config, 'r');
+
+        function cloneLocalState(mode, state) {
+          return mode && state && typeof CodeMirror.copyState === 'function'
+            ? CodeMirror.copyState(mode, state)
+            : state;
+        }
+
+        function startRChunk(state, fence) {
+          state.inRChunk = true;
+          state.rState = CodeMirror.startState(rMode);
+          state.rFence = fence;
+          state.rFenceEnd = new RegExp('^\\s*' + escapeRegExp(fence.charAt(0)) + '{' + fence.length + ',}\\s*$');
+        }
+
+        return {
+          startState: function() {
+            return {
+              markdown: CodeMirror.startState(markdownMode),
+              inRChunk: false,
+              rState: null,
+              rFence: null,
+              rFenceEnd: null
+            };
+          },
+          copyState: function(state) {
+            return {
+              markdown: cloneLocalState(markdownMode, state.markdown),
+              inRChunk: state.inRChunk,
+              rState: state.rState ? cloneLocalState(rMode, state.rState) : null,
+              rFence: state.rFence,
+              rFenceEnd: state.rFenceEnd
+            };
+          },
+          token: function(stream, state) {
+            if (stream.sol()) {
+              if (state.inRChunk) {
+                if (state.rFenceEnd && state.rFenceEnd.test(stream.string)) {
+                  stream.skipToEnd();
+                  state.inRChunk = false;
+                  state.rState = null;
+                  state.rFence = null;
+                  state.rFenceEnd = null;
+                  return 'formatting formatting-code-block comment';
+                }
+              } else {
+                var rChunkMatch = stream.string.match(/^\s*(`{3,}|~{3,})\s*\{[Rr]\b[^}]*\}\s*$/);
+                if (rChunkMatch) {
+                  stream.skipToEnd();
+                  startRChunk(state, rChunkMatch[1]);
+                  return 'formatting formatting-code-block comment';
+                }
+              }
+            }
+
+            if (state.inRChunk) {
+              return rMode.token(stream, state.rState);
+            }
+
+            return markdownMode.token(stream, state.markdown);
+          },
+          innerMode: function(state) {
+            return state.inRChunk
+              ? { state: state.rState, mode: rMode }
+              : { state: state.markdown, mode: markdownMode };
+          },
+          blankLine: function(state) {
+            if (state.inRChunk) {
+              if (rMode.blankLine) return rMode.blankLine(state.rState);
+              return null;
+            }
+            if (markdownMode.blankLine) return markdownMode.blankLine(state.markdown);
+            return null;
+          },
+          getType: function(state) {
+            if (state.inRChunk && rMode.getType) return rMode.getType(state.rState);
+            if (markdownMode.getType) return markdownMode.getType(state.markdown);
+            return null;
+          },
+          fold: 'markdown'
+        };
+      });
+
+      markdownWithRModeConfigured = true;
+    }
+
     function initMarkdownEditor() {
       if (!editorEnabled || markdownEditorCm) return;
       const editor = document.getElementById('markdownEditor');
       if (!editor || typeof CodeMirror === 'undefined') return;
+      ensureMarkdownWithRMode();
       markdownEditorCm = CodeMirror.fromTextArea(editor, {
-        mode: 'markdown',
+        mode: 'markdown_with_r_chunks',
         lineNumbers: true,
         lineWrapping: true,
         viewportMargin: Infinity

@@ -8,10 +8,16 @@ public class SFCRTableDumpBuilderService {
     public static class DumpBuildResult {
         public final String dump;
         public final int y2;
+        public final boolean truncated;
+        public final int originalRowCount;
+        public final int finalRowCount;
 
-        DumpBuildResult(String dump, int y2) {
+        DumpBuildResult(String dump, int y2, boolean truncated, int originalRowCount, int finalRowCount) {
             this.dump = dump;
             this.y2 = y2;
+            this.truncated = truncated;
+            this.originalRowCount = originalRowCount;
+            this.finalRowCount = finalRowCount;
         }
     }
 
@@ -92,7 +98,7 @@ public class SFCRTableDumpBuilderService {
             dump.append("\\0 ");
         }
         dump.append("true 0.000001");
-        return new DumpBuildResult(dump.toString(), y2);
+        return new DumpBuildResult(dump.toString(), y2, false, rows, rows);
     }
 
     private ColumnType resolveMatrixColumnType(ArrayList<String> columnTypes, int index) {
@@ -138,8 +144,11 @@ public class SFCRTableDumpBuilderService {
         if (rows == 0) {
             return null;
         }
+        int originalRows = rows;
+        boolean truncated = false;
         if (rows > com.lushprojects.circuitjs1.client.elements.economics.EquationTableElm.MAX_ROWS) {
             rows = com.lushprojects.circuitjs1.client.elements.economics.EquationTableElm.MAX_ROWS;
+            truncated = true;
         }
 
         int x1 = currentX;
@@ -179,6 +188,6 @@ public class SFCRTableDumpBuilderService {
             dump.append("0 ");
         }
 
-        return new DumpBuildResult(dump.toString(), y2);
+        return new DumpBuildResult(dump.toString(), y2, truncated, originalRows, rows);
     }
 }

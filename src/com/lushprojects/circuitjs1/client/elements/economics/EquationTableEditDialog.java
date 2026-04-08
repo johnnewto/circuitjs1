@@ -320,6 +320,15 @@ public class EquationTableEditDialog extends Dialog {
         });
         buttonPanel.add(classifyModesButton);
 
+        Button convertParamsButton = new Button("Params→Voltage");
+        convertParamsButton.setTitle("Convert Param rows to Voltage (comment rows unchanged)");
+        convertParamsButton.addClickHandler(new ClickHandler() {
+            public void onClick(ClickEvent event) {
+                convertParamRowsToVoltage();
+            }
+        });
+        buttonPanel.add(convertParamsButton);
+
         Button toggleDelaySyntaxButton = new Button("Toggle last↔delay");
         toggleDelaySyntaxButton.setTitle("Toggle syntax: last(Name)/Name[-1] ↔ delay(Name)");
         toggleDelaySyntaxButton.addClickHandler(new ClickHandler() {
@@ -1124,6 +1133,23 @@ public class EquationTableEditDialog extends Dialog {
         }
 
         setStatus("Classified modes: " + convertedToVoltage + " cyclic→Voltage, " + convertedToParam + " non-cyclic→Param");
+        markChanged();
+        populateGrid();
+    }
+
+    /**
+     * Convert all editable PARAM rows to VOLTAGE mode.
+     * Comment rows are left unchanged because they are always locked to PARAM.
+     */
+    private void convertParamRowsToVoltage() {
+        int convertedCount = EquationTableModeConversionHelper.convertParamRowsToVoltage(outputModes, outputNames, rowCount);
+
+        if (convertedCount == 0) {
+            setStatus("No Param rows to convert to Voltage");
+            return;
+        }
+
+        setStatus("Converted " + convertedCount + " Param row(s) to Voltage");
         markChanged();
         populateGrid();
     }

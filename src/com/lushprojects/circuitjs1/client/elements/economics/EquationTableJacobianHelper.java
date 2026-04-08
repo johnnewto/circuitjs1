@@ -194,6 +194,9 @@ final class EquationTableJacobianHelper {
         if (hasStatefulOperators(rowData.equation)) {
             return "ineligible: stateful expr";
         }
+        if (rowData.compiledExpr.hasSamePeriodReferenceInDenominator()) {
+            return "ineligible: same-period ref in denominator";
+        }
         return null;
     }
 
@@ -234,6 +237,9 @@ final class EquationTableJacobianHelper {
         }
         if (hasStatefulOperators(rowData.equation)) {
             return "ineligible: stateful expr";
+        }
+        if (rowData.compiledExpr.hasSamePeriodReferenceInDenominator()) {
+            return "ineligible: same-period ref in denominator";
         }
         return null;
     }

@@ -11,7 +11,7 @@ It supports two simulator-wide execution modes:
 **Dump type:** 266  
 **Source:** [EquationTableElm.java](../src/com/lushprojects/circuitjs1/client/EquationTableElm.java)  
 **Renderer:** [EquationTableRenderer.java](../src/com/lushprojects/circuitjs1/client/EquationTableRenderer.java)  
-**Max rows:** 64
+**Max rows:** 256
 
 ## Quick Facts
 
