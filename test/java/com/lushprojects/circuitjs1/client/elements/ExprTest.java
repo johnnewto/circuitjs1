@@ -29,6 +29,33 @@ class ExprTest {
     }
 
     @Test
+    @DisplayName("uppercase PI parses as a variable name while lowercase pi remains the math constant")
+    void testUppercasePiRemainsVariableName() {
+        Expr uppercaseVariableExpr = parse("PI");
+        Expr lowercaseConstantExpr = parse("pi");
+        ExprState state = new ExprState(0);
+
+        assertEquals(Expr.E_NODE_REF, uppercaseVariableExpr.type);
+        assertEquals("PI", uppercaseVariableExpr.nodeName);
+        assertEquals(Expr.E_VAL, lowercaseConstantExpr.type);
+        assertEquals(Math.PI, lowercaseConstantExpr.evalFresh(state), 1e-12);
+    }
+
+    @Test
+    @DisplayName("uppercase T parses as a variable name while lowercase t remains simulation time")
+    void testUppercaseTRemainsVariableName() {
+        Expr uppercaseVariableExpr = parse("T");
+        Expr lowercaseTimeExpr = parse("t");
+        ExprState state = new ExprState(0);
+        state.t = 7.5;
+
+        assertEquals(Expr.E_NODE_REF, uppercaseVariableExpr.type);
+        assertEquals("T", uppercaseVariableExpr.nodeName);
+        assertEquals(Expr.E_T, lowercaseTimeExpr.type);
+        assertEquals(7.5, lowercaseTimeExpr.evalFresh(state), 1e-12);
+    }
+
+    @Test
     @DisplayName("invalid expression leaves gotError() non-null")
     void testParseErrorOnInvalidExpression() {
         ExprParser parser = new ExprParser("1 + * 2");

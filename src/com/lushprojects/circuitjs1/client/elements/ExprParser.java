@@ -341,8 +341,10 @@ public class ExprParser {
 			skipOrError(")");
 			return e;
 		}
-		// Handle case-insensitive 't' for time
-		if (token.equalsIgnoreCase("t")) {
+		// Handle lowercase 't' for time.
+		// Keep this case-sensitive so uppercase identifiers like T remain usable
+		// as model variable names in economic equations.
+		if (token.equals("t")) {
 			getToken();
 			return new Expr(Expr.E_T);
 		}
@@ -391,7 +393,10 @@ public class ExprParser {
 			getToken();
 			return new Expr(Expr.E_TIMESTEP);
 		}
-		if (token.equalsIgnoreCase("pi")) {
+		// Handle lowercase 'pi' as the mathematical constant only.
+		// Keep this case-sensitive so uppercase PI remains available for
+		// inflation-rate variables in Godley/Lavoie-style models.
+		if (token.equals("pi")) {
 			getToken();
 			return new Expr(Expr.E_VAL, 3.14159265358979323846);
 		}
