@@ -64,6 +64,9 @@ class EquationTableRenderer {
     private Font perfFont = new Font("SansSerif", 0, 9);
     private double renderTimeEmaMs = 0;
     private boolean hasRenderTimingSample = false;
+
+    /** Cached adjustable variable names, recomputed once per draw cycle. */
+    private Set<String> cachedAdjustableVariableNames;
     
     // Modern styling configuration (matches TableRenderer)
     private static final boolean MODERN_STYLE = true;
@@ -459,6 +462,9 @@ class EquationTableRenderer {
         int rowHeight = table.getRowHeight();
         int visibleRowCount = table.getVisibleRowCount();
         int firstVisibleRow = table.getFirstVisibleRow();
+
+        // Compute adjustable variable names once per draw cycle
+        cachedAdjustableVariableNames = table.collectAdjustableVariableNames();
         
         // Try to use cached static rendering
         boolean usingCache = ensureCacheValid(tableWidth, tableHeight, visibleRowCount);
@@ -844,10 +850,9 @@ class EquationTableRenderer {
         int textRightX = tableX + tableWidth - table.getContentRightInset() - valueWidth - initWidth - table.getCellPadding() - 2;
         int textClipWidth = Math.max(0, textRightX - textX);
         if (textClipWidth > 0) {
-            Set<String> adjustableVariableNames = table.collectAdjustableVariableNames();
             g.save();
             g.clipRect(textX - 1, rowY + 1, textClipWidth + 2, rowHeight - 2);
-            drawVariableColoredText(g, rowText, textX, rowY + rowHeight - cellPadding - 2, adjustableVariableNames);
+            drawVariableColoredText(g, rowText, textX, rowY + rowHeight - cellPadding - 2, cachedAdjustableVariableNames);
             g.restore();
         }
 

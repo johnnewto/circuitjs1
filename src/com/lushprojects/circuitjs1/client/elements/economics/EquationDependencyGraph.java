@@ -8,6 +8,7 @@ import com.lushprojects.circuitjs1.client.registry.HintRegistry;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -173,31 +174,31 @@ public final class EquationDependencyGraph {
     }
 
     public List<String> getNodeNames() {
-        return nodes;
+        return Collections.unmodifiableList(nodes);
     }
 
     public List<Boolean> getNodeIsStock() {
-        return nodeIsStock;
+        return Collections.unmodifiableList(nodeIsStock);
     }
 
     public List<String> getNodeHints() {
-        return nodeHints;
+        return Collections.unmodifiableList(nodeHints);
     }
 
     public List<String> getNodeHintEquations() {
-        return nodeHintEquations;
+        return Collections.unmodifiableList(nodeHintEquations);
     }
 
     public List<EdgeData> getEdges() {
-        return edges;
+        return Collections.unmodifiableList(edges);
     }
 
     public int[] getBlockByNode() {
-        return blockByNode;
+        return Arrays.copyOf(blockByNode, blockByNode.length);
     }
 
     public boolean[] getCyclicalByNode() {
-        return cyclicalByNode;
+        return Arrays.copyOf(cyclicalByNode, cyclicalByNode.length);
     }
 
     public int getBlockCount() {

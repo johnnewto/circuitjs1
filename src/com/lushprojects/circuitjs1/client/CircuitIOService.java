@@ -436,7 +436,7 @@ final class CircuitIOService {
             StockFlowRegistry.clearRegistry();
             ComputedValues.clearMasterTables();
             ComputedValues.clearComputedValues();
-            EquationTableElm.resetGlobalTraceState();
+            EquationTableElm.resetGlobalTraceState(sim);
             LookupTableRegistry.clear();
             HintRegistry.clear();
             ActionScheduler scheduler = ActionScheduler.getInstance(sim);

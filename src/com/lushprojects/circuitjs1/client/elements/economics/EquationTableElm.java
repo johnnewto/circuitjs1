@@ -502,12 +502,6 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     /** True when the cached dependency graph needs rebuilding. */
     private boolean dependencyGraphDirty = true;
 
-    /** Sticky trace root selected by click interaction, or empty when no selection exists. */
-    private String selectedTraceRootName = "";
-
-    /** Sticky trace direction selected by click interaction. */
-    private TraceDirection selectedTraceDirection = TraceDirection.NONE;
-
     /** Table currently owning the circuit-wide hover preview trace. */
     private static EquationTableElm globalHoveredTraceOwner;
 
@@ -1183,9 +1177,6 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
 
     private void invalidateEffectiveTrace() {
         effectiveTraceDirty = true;
-        if (renderer != null) {
-            renderer.invalidateContentCache();
-        }
     }
 
     private EquationDependencyGraph getDependencyGraph() {
@@ -1204,6 +1195,12 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             return;
         }
         effectiveTraceDirty = false;
+
+        String prevRoot = effectiveTraceRootName;
+        TraceDirection prevDirection = effectiveTraceDirection;
+        java.util.LinkedHashSet<String> prevInputs = new java.util.LinkedHashSet<String>(effectiveTraceInputs);
+        java.util.LinkedHashSet<String> prevOutputs = new java.util.LinkedHashSet<String>(effectiveTraceOutputs);
+
         effectiveTraceInputs.clear();
         effectiveTraceOutputs.clear();
         effectiveTraceRootName = "";
@@ -1217,24 +1214,27 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
 
         rootName = rootName == null ? "" : rootName.trim();
-        if (rootName.length() == 0 || direction == TraceDirection.NONE) {
-            return;
-        }
-
-        EquationDependencyGraph graph = getDependencyGraph();
-        if (graph == null || graph.getNodeIndex(rootName) < 0) {
+        if (rootName.length() > 0 && direction != TraceDirection.NONE) {
+            EquationDependencyGraph graph = getDependencyGraph();
             effectiveTraceRootName = rootName;
             effectiveTraceDirection = direction;
-            return;
+            if (graph != null && graph.getNodeIndex(rootName) >= 0) {
+                if (direction.includesInputs()) {
+                    effectiveTraceInputs.addAll(graph.getDirectInputs(rootName));
+                }
+                if (direction.includesOutputs()) {
+                    effectiveTraceOutputs.addAll(graph.getDirectOutputs(rootName));
+                }
+            }
         }
 
-        effectiveTraceRootName = rootName;
-        effectiveTraceDirection = direction;
-        if (direction.includesInputs()) {
-            effectiveTraceInputs.addAll(graph.getDirectInputs(rootName));
-        }
-        if (direction.includesOutputs()) {
-            effectiveTraceOutputs.addAll(graph.getDirectOutputs(rootName));
+        // Only invalidate expensive content cache when effective trace state actually changed
+        boolean rootChanged = !effectiveTraceRootName.equals(prevRoot);
+        boolean directionChanged = effectiveTraceDirection != prevDirection;
+        boolean inputsChanged = !effectiveTraceInputs.equals(prevInputs);
+        boolean outputsChanged = !effectiveTraceOutputs.equals(prevOutputs);
+        if ((rootChanged || directionChanged || inputsChanged || outputsChanged) && renderer != null) {
+            renderer.invalidateContentCache();
         }
     }
 
@@ -1296,13 +1296,14 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         invalidateAllTraceOverlays(owner.sim);
     }
 
-    /** Clear all circuit-wide hover/pinned trace state. */
-    public static void resetGlobalTraceState() {
+    /** Clear all circuit-wide hover/pinned trace state and invalidate table overlays. */
+    public static void resetGlobalTraceState(CirSim sim) {
         globalHoveredTraceOwner = null;
         globalHoveredTraceRootName = "";
         globalHoveredTraceDirection = TraceDirection.NONE;
         globalSelectedTraceRootName = "";
         globalSelectedTraceDirection = TraceDirection.NONE;
+        invalidateAllTraceOverlays(sim);
     }
     
     //=============================================================================
@@ -3082,8 +3083,6 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
 
     /** Clear sticky trace selection; hover tracing remains available. */
     public void clearTraceSelection() {
-        selectedTraceRootName = "";
-        selectedTraceDirection = TraceDirection.NONE;
         setGlobalSelectedTrace(sim, "", TraceDirection.NONE);
     }
 
@@ -3112,8 +3111,6 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         if (newRootName.equals(globalSelectedTraceRootName) && newDirection == globalSelectedTraceDirection) {
             clearTraceSelection();
         } else {
-            selectedTraceRootName = newRootName;
-            selectedTraceDirection = newDirection;
             setGlobalSelectedTrace(sim, newRootName, newDirection);
         }
         return true;

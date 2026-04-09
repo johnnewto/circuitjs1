@@ -1,6 +1,7 @@
 package com.lushprojects.circuitjs1.client.elements.economics;
 
 import java.util.ArrayList;
+import java.util.List;
 import com.lushprojects.circuitjs1.client.*;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.resources.client.ClientBundle;
@@ -67,33 +68,6 @@ public class SFCRDagBlocksViewer {
 
     private final CirSim sim;
 
-    /** Directed dependency edge: from source equation node to target equation node. */
-    private static class EdgeDef {
-        int from;
-        int to;
-        boolean historical;
-        boolean lastDependency;
-
-        EdgeDef(int from, int to, boolean historical, boolean lastDependency) {
-            this.from = from;
-            this.to = to;
-            this.historical = historical;
-            this.lastDependency = lastDependency;
-        }
-    }
-
-    /** Fully assembled graph payload consumed by the HTML renderer. */
-    private static class GraphData {
-        ArrayList<String> nodes = new ArrayList<String>();
-        ArrayList<Boolean> nodeIsStock = new ArrayList<Boolean>();
-        ArrayList<String> nodeHints = new ArrayList<String>();
-        ArrayList<String> nodeHintEquations = new ArrayList<String>();
-        ArrayList<EdgeDef> edges = new ArrayList<EdgeDef>();
-        int[] blockByNode;
-        boolean[] cyclicalByNode;
-        int blockCount;
-    }
-
     public SFCRDagBlocksViewer(CirSim sim) {
         this.sim = sim;
     }
@@ -113,14 +87,14 @@ public class SFCRDagBlocksViewer {
      * Build all graph variants and open/reuse the external viewer popup.
      */
     public void openExternalWindow() {
-        GraphData samePeriodGraph = buildGraph(false, false, false);
-        GraphData historicalGraph = buildGraph(true, false, false);
-        GraphData samePeriodNoParamsGraph = buildGraph(false, true, false);
-        GraphData historicalNoParamsGraph = buildGraph(true, true, false);
-        GraphData samePeriodNoAdjustableGraph = buildGraph(false, false, true);
-        GraphData historicalNoAdjustableGraph = buildGraph(true, false, true);
-        GraphData samePeriodNoParamsNoAdjustableGraph = buildGraph(false, true, true);
-        GraphData historicalNoParamsNoAdjustableGraph = buildGraph(true, true, true);
+        EquationDependencyGraph samePeriodGraph = buildGraph(false, false, false);
+        EquationDependencyGraph historicalGraph = buildGraph(true, false, false);
+        EquationDependencyGraph samePeriodNoParamsGraph = buildGraph(false, true, false);
+        EquationDependencyGraph historicalNoParamsGraph = buildGraph(true, true, false);
+        EquationDependencyGraph samePeriodNoAdjustableGraph = buildGraph(false, false, true);
+        EquationDependencyGraph historicalNoAdjustableGraph = buildGraph(true, false, true);
+        EquationDependencyGraph samePeriodNoParamsNoAdjustableGraph = buildGraph(false, true, true);
+        EquationDependencyGraph historicalNoParamsNoAdjustableGraph = buildGraph(true, true, true);
         String html = generateHTML(samePeriodGraph, historicalGraph,
                 samePeriodNoParamsGraph, historicalNoParamsGraph,
                 samePeriodNoAdjustableGraph, historicalNoAdjustableGraph,
@@ -137,38 +111,17 @@ public class SFCRDagBlocksViewer {
      * @param ignoreExternalSections true to skip rows under "# Parameters" and "# External" sections
      * @param ignoreAdjustableRows true to skip rows where table.isAdjustableRow(row)
      */
-    private GraphData buildGraph(boolean includeHistoricalRefs, boolean ignoreExternalSections,
+    private EquationDependencyGraph buildGraph(boolean includeHistoricalRefs, boolean ignoreExternalSections,
             boolean ignoreAdjustableRows) {
-        EquationDependencyGraph depGraph = EquationDependencyGraph.build(sim, includeHistoricalRefs,
+        return EquationDependencyGraph.build(sim, includeHistoricalRefs,
                 ignoreExternalSections, ignoreAdjustableRows);
-        GraphData graph = new GraphData();
-        if (depGraph.getNodeNames().isEmpty()) {
-            graph.blockByNode = new int[0];
-            graph.cyclicalByNode = new boolean[0];
-            graph.blockCount = 0;
-            return graph;
-        }
-
-        for (int i = 0; i < depGraph.getNodeNames().size(); i++) {
-            graph.nodes.add(depGraph.getNodeNames().get(i));
-            graph.nodeIsStock.add(depGraph.getNodeIsStock().get(i));
-            graph.nodeHints.add(depGraph.getNodeHints().get(i));
-            graph.nodeHintEquations.add(depGraph.getNodeHintEquations().get(i));
-        }
-        for (EquationDependencyGraph.EdgeData edge : depGraph.getEdges()) {
-            graph.edges.add(new EdgeDef(edge.from, edge.to, edge.historical, edge.lastDependency));
-        }
-        graph.blockByNode = depGraph.getBlockByNode();
-        graph.cyclicalByNode = depGraph.getCyclicalByNode();
-        graph.blockCount = depGraph.getBlockCount();
-        return graph;
     }
 
     /** Build complete standalone popup HTML with Cytoscape renderer and controls. */
-    private String generateHTML(GraphData samePeriodGraph, GraphData historicalGraph,
-            GraphData samePeriodNoParamsGraph, GraphData historicalNoParamsGraph,
-            GraphData samePeriodNoAdjustableGraph, GraphData historicalNoAdjustableGraph,
-            GraphData samePeriodNoParamsNoAdjustableGraph, GraphData historicalNoParamsNoAdjustableGraph) {
+    private String generateHTML(EquationDependencyGraph samePeriodGraph, EquationDependencyGraph historicalGraph,
+            EquationDependencyGraph samePeriodNoParamsGraph, EquationDependencyGraph historicalNoParamsGraph,
+            EquationDependencyGraph samePeriodNoAdjustableGraph, EquationDependencyGraph historicalNoAdjustableGraph,
+            EquationDependencyGraph samePeriodNoParamsNoAdjustableGraph, EquationDependencyGraph historicalNoParamsNoAdjustableGraph) {
         String sameJson = graphToJSON(samePeriodGraph, "Same-Period Dependencies");
         String historicalJson = graphToJSON(historicalGraph, "Historical + Same-Period Dependencies");
         String sameNoParamsJson = graphToJSON(samePeriodNoParamsGraph,
@@ -196,30 +149,38 @@ public class SFCRDagBlocksViewer {
             .replace("__BLOCK_COLORS_JS_ARRAY__", jsStringArray(BLOCK_COLORS));
     }
 
-    private String graphToJSON(GraphData graph, String titleSuffix) {
+    private String graphToJSON(EquationDependencyGraph graph, String titleSuffix) {
+        List<String> nodes = graph.getNodeNames();
+        List<Boolean> nodeIsStock = graph.getNodeIsStock();
+        List<String> nodeHints = graph.getNodeHints();
+        List<String> nodeHintEquations = graph.getNodeHintEquations();
+        List<EquationDependencyGraph.EdgeData> edges = graph.getEdges();
+        int[] blockByNode = graph.getBlockByNode();
+        boolean[] cyclicalByNode = graph.getCyclicalByNode();
+
         StringBuilder sb = new StringBuilder();
         sb.append("{");
         sb.append("\"title\":\"").append(escapeJson("SFCR DAG Blocks Plot — " + titleSuffix)).append("\",");
         sb.append("\"nodes\":[");
-        for (int i = 0; i < graph.nodes.size(); i++) {
+        for (int i = 0; i < nodes.size(); i++) {
             if (i > 0) {
                 sb.append(",");
             }
             sb.append("{");
-            sb.append("\"name\":\"").append(escapeJson(graph.nodes.get(i))).append("\",");
-            sb.append("\"stock\":").append(graph.nodeIsStock != null && i < graph.nodeIsStock.size() && graph.nodeIsStock.get(i).booleanValue() ? "true" : "false").append(",");
-            sb.append("\"hint\":\"").append(escapeJson(graph.nodeHints != null && i < graph.nodeHints.size() ? graph.nodeHints.get(i) : "")).append("\",");
-            sb.append("\"hintEq\":\"").append(escapeJson(graph.nodeHintEquations != null && i < graph.nodeHintEquations.size() ? graph.nodeHintEquations.get(i) : "")).append("\",");
-            sb.append("\"block\":").append(graph.blockByNode != null && i < graph.blockByNode.length ? graph.blockByNode[i] : 0).append(",");
-            sb.append("\"cyclical\":").append(graph.cyclicalByNode != null && i < graph.cyclicalByNode.length && graph.cyclicalByNode[i] ? "true" : "false");
+            sb.append("\"name\":\"").append(escapeJson(nodes.get(i))).append("\",");
+            sb.append("\"stock\":").append(i < nodeIsStock.size() && nodeIsStock.get(i).booleanValue() ? "true" : "false").append(",");
+            sb.append("\"hint\":\"").append(escapeJson(i < nodeHints.size() ? nodeHints.get(i) : "")).append("\",");
+            sb.append("\"hintEq\":\"").append(escapeJson(i < nodeHintEquations.size() ? nodeHintEquations.get(i) : "")).append("\",");
+            sb.append("\"block\":").append(i < blockByNode.length ? blockByNode[i] : 0).append(",");
+            sb.append("\"cyclical\":").append(i < cyclicalByNode.length && cyclicalByNode[i] ? "true" : "false");
             sb.append("}");
         }
         sb.append("],\"edges\":[");
-        for (int i = 0; i < graph.edges.size(); i++) {
+        for (int i = 0; i < edges.size(); i++) {
             if (i > 0) {
                 sb.append(",");
             }
-            EdgeDef edge = graph.edges.get(i);
+            EquationDependencyGraph.EdgeData edge = edges.get(i);
             sb.append("{");
             sb.append("\"from\":").append(edge.from).append(",");
             sb.append("\"to\":").append(edge.to).append(",");
