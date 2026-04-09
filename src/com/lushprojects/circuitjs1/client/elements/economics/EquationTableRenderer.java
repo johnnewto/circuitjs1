@@ -9,6 +9,7 @@ package com.lushprojects.circuitjs1.client.elements.economics;
 import com.google.gwt.canvas.client.Canvas;
 import com.google.gwt.canvas.dom.client.Context2d;
 import com.google.gwt.core.client.Duration;
+import java.util.Set;
 import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.runner.RuntimeMode;
 import com.lushprojects.circuitjs1.client.util.*;
@@ -59,6 +60,7 @@ class EquationTableRenderer {
     // Fonts for different parts of the table
     private Font labelFont;
     private Font valueFont;
+    private Font valueFontBold;
     private Font perfFont = new Font("SansSerif", 0, 9);
     private double renderTimeEmaMs = 0;
     private boolean hasRenderTimingSample = false;
@@ -104,6 +106,16 @@ class EquationTableRenderer {
     private static final Color ROW_ODD_BG_LIGHT = new Color(255, 255, 255);
     private static final Color TABLE_BG_LIGHT = new Color(255, 255, 255);
     private static final Color GRID_LINE_LIGHT = new Color(220, 220, 230);
+    private static final Color TRACE_ROOT_FILL_DARK = new Color(96, 73, 20);
+    private static final Color TRACE_INPUT_FILL_DARK = new Color(38, 70, 112);
+    private static final Color TRACE_OUTPUT_FILL_DARK = new Color(72, 47, 100);
+    private static final Color TRACE_BOTH_FILL_DARK = new Color(78, 66, 118);
+    private static final Color TRACE_ROOT_FILL_LIGHT = new Color(255, 236, 190);
+    private static final Color TRACE_INPUT_FILL_LIGHT = new Color(214, 232, 255);
+    private static final Color TRACE_OUTPUT_FILL_LIGHT = new Color(235, 220, 255);
+    private static final Color TRACE_BOTH_FILL_LIGHT = new Color(225, 214, 248);
+    private static final Color TRACE_ACCENT_DARK = new Color(245, 200, 96);
+    private static final Color TRACE_ACCENT_LIGHT = new Color(148, 104, 10);
     
     public EquationTableRenderer(EquationTableElm table) {
         this.table = table;
@@ -424,6 +436,7 @@ class EquationTableRenderer {
     public void updateFonts(int opsize) {
         labelFont = new Font("SansSerif", 0, opsize == 2 ? 12 : 10);
         valueFont = new Font("SansSerif", 0, opsize == 2 ? 10 : 8);
+        valueFontBold = new Font("SansSerif", Font.BOLD, opsize == 2 ? 10 : 8);
         perfFont = new Font("SansSerif", 0, opsize == 2 ? 9 : 8);
     }
     
@@ -484,6 +497,8 @@ class EquationTableRenderer {
                 visibleRowCount, firstVisibleRow);
         }
         
+        drawTraceHighlights(g, tableX, tableY);
+
         // Draw hover highlight (dynamic - not cached)
         drawHoverHighlight(g, tableX, tableY);
         
@@ -572,6 +587,46 @@ class EquationTableRenderer {
             Color hoverColor = isPrintable() ? new Color(220, 220, 240) : new Color(65, 65, 85);
             g.setColor(hoverColor);
             g.fillRect(tableX + 1, rowY + 1, table.getTableWidth() - 2, table.getRowHeight() - 1);
+        }
+    }
+
+    private void drawTraceHighlights(Graphics g, int tableX, int tableY) {
+        if (!table.hasTraceHighlight()) {
+            return;
+        }
+        int firstVisibleRow = table.getFirstVisibleRow();
+        int visibleRowCount = table.getVisibleRowCount();
+        for (int visibleRow = 0; visibleRow < visibleRowCount; visibleRow++) {
+            int row = firstVisibleRow + visibleRow;
+            if (row < 0 || row >= table.getRowCount()) {
+                continue;
+            }
+            boolean root = table.isTraceRootRow(row);
+            boolean input = table.isTraceInputRow(row);
+            boolean output = table.isTraceOutputRow(row);
+            if (!root && !input && !output) {
+                continue;
+            }
+
+            int rowY = tableY + (visibleRow + 1) * table.getRowHeight();
+            Color fill;
+            if (root) {
+                fill = isPrintable() ? TRACE_ROOT_FILL_LIGHT : TRACE_ROOT_FILL_DARK;
+            } else if (input && output) {
+                fill = isPrintable() ? TRACE_BOTH_FILL_LIGHT : TRACE_BOTH_FILL_DARK;
+            } else if (input) {
+                fill = isPrintable() ? TRACE_INPUT_FILL_LIGHT : TRACE_INPUT_FILL_DARK;
+            } else {
+                fill = isPrintable() ? TRACE_OUTPUT_FILL_LIGHT : TRACE_OUTPUT_FILL_DARK;
+            }
+
+            g.setColor(fill);
+            g.fillRect(tableX + 1, rowY + 1, table.getTableWidth() - 2, table.getRowHeight() - 1);
+            g.setColor(isPrintable() ? TRACE_ACCENT_LIGHT : TRACE_ACCENT_DARK);
+            g.fillRect(tableX + 1, rowY + 1, 4, table.getRowHeight() - 1);
+            if (root) {
+                g.drawRect(tableX + 1, rowY + 1, table.getTableWidth() - 3, table.getRowHeight() - 2);
+            }
         }
     }
     
@@ -789,9 +844,10 @@ class EquationTableRenderer {
         int textRightX = tableX + tableWidth - table.getContentRightInset() - valueWidth - initWidth - table.getCellPadding() - 2;
         int textClipWidth = Math.max(0, textRightX - textX);
         if (textClipWidth > 0) {
+            Set<String> adjustableVariableNames = table.collectAdjustableVariableNames();
             g.save();
             g.clipRect(textX - 1, rowY + 1, textClipWidth + 2, rowHeight - 2);
-            drawVariableColoredText(g, rowText, textX, rowY + rowHeight - cellPadding - 2);
+            drawVariableColoredText(g, rowText, textX, rowY + rowHeight - cellPadding - 2, adjustableVariableNames);
             g.restore();
         }
 
@@ -905,12 +961,16 @@ class EquationTableRenderer {
         return converted;
     }
 
-    private void drawVariableColoredText(Graphics g, String text, int startX, int baselineY) {
+    private void drawVariableColoredText(Graphics g, String text, int startX, int baselineY,
+                                         Set<String> adjustableVariableNames) {
         double drawX = startX;
         int i = 0;
+        Font regularFont = valueFont;
+        Font boldFont = (valueFontBold != null) ? valueFontBold : valueFont;
         while (i < text.length()) {
             int segmentStart = i;
             Color segmentColor = getTextColor();
+            boolean segmentBold = false;
 
             if (text.charAt(i) == '\\' && i + 1 < text.length() && isIdentifierStartChar(text.charAt(i + 1))) {
                 i += 2;
@@ -918,14 +978,16 @@ class EquationTableRenderer {
                     i++;
                 }
                 String token = text.substring(segmentStart, i);
-                segmentColor = getVariableColor(token, isFunctionLike(text, i));
+                segmentColor = getVariableColor(token, isFunctionLike(text, i), adjustableVariableNames);
+                segmentBold = shouldBoldTraceToken(token, text, i);
             } else if (isIdentifierStartChar(text.charAt(i))) {
                 i++;
                 while (i < text.length() && isIdentifierPartChar(text.charAt(i))) {
                     i++;
                 }
                 String token = text.substring(segmentStart, i);
-                segmentColor = getVariableColor(token, isFunctionLike(text, i));
+                segmentColor = getVariableColor(token, isFunctionLike(text, i), adjustableVariableNames);
+                segmentBold = shouldBoldTraceToken(token, text, i);
             } else {
                 i++;
                 while (i < text.length()) {
@@ -940,14 +1002,23 @@ class EquationTableRenderer {
             }
 
             String segment = text.substring(segmentStart, i);
+            g.setFont(segmentBold ? boldFont : regularFont);
             g.setColor(segmentColor);
             g.drawString(segment, (int) Math.round(drawX), baselineY);
             drawX += g.measureWidth(segment);
         }
+        g.setFont(regularFont);
     }
 
-    private Color getVariableColor(String token, boolean functionLike) {
-        EquationTableVariableColoring.VariableKind kind = EquationTableVariableColoring.classifyToken(token, functionLike);
+    private boolean shouldBoldTraceToken(String token, String text, int indexAfterToken) {
+        return !isFunctionLike(text, indexAfterToken) && table.shouldBoldTraceToken(token);
+    }
+
+    private Color getVariableColor(String token, boolean functionLike, Set<String> adjustableVariableNames) {
+        EquationTableVariableColoring.VariableKind kind = classifyVariableKind(token, functionLike, adjustableVariableNames);
+        if (kind == EquationTableVariableColoring.VariableKind.ADJUSTABLE) {
+            return table.getAdjustableVariableColor();
+        }
         if (kind == EquationTableVariableColoring.VariableKind.NOMINAL) {
             return table.getNominalVariableColor();
         }
@@ -955,6 +1026,37 @@ class EquationTableRenderer {
             return table.getRealVariableColor();
         }
         return getTextColor();
+    }
+
+    private EquationTableVariableColoring.VariableKind classifyVariableKind(String token, boolean functionLike,
+                                                                            Set<String> adjustableVariableNames) {
+        if (isAdjustableVariableToken(token, functionLike, adjustableVariableNames)) {
+            return EquationTableVariableColoring.VariableKind.ADJUSTABLE;
+        }
+        return EquationTableVariableColoring.classifyToken(token, functionLike);
+    }
+
+    private boolean isAdjustableVariableToken(String token, boolean functionLike, Set<String> adjustableVariableNames) {
+        if (functionLike || token == null || token.length() == 0 || adjustableVariableNames == null || adjustableVariableNames.isEmpty()) {
+            return false;
+        }
+        String trimmedToken = token.trim();
+        if (adjustableVariableNames.contains(trimmedToken)) {
+            return true;
+        }
+        String convertedToken = Locale.convertGreekSymbols(trimmedToken);
+        for (String name : adjustableVariableNames) {
+            if (trimmedToken.equals(name)) {
+                return true;
+            }
+            String convertedName = Locale.convertGreekSymbols(name);
+            if (trimmedToken.equals(convertedName)
+                    || convertedToken.equals(name)
+                    || convertedToken.equals(convertedName)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean isFunctionLike(String text, int index) {

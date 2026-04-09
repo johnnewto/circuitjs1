@@ -9,6 +9,7 @@ import com.lushprojects.circuitjs1.client.util.Color;
 final class EquationTableVariableColoring {
 
     enum VariableKind {
+        ADJUSTABLE,
         NOMINAL,
         REAL,
         OTHER

@@ -111,6 +111,10 @@ public class EquationTableEditDialog extends Dialog {
     private TextBox tableNameBox;
     private TextBox nominalColorBox;
     private TextBox realColorBox;
+    private TextBox adjustableColorBox;
+    private Label nominalColorSwatch;
+    private Label realColorSwatch;
+    private Label adjustableColorSwatch;
     
     // Data storage (copied from element for editing)
     private int rowCount;
@@ -123,6 +127,7 @@ public class EquationTableEditDialog extends Dialog {
     private String[] hints;
     private String nominalVariableColorHex;
     private String realVariableColorHex;
+    private String adjustableVariableColorHex;
     
     // Track changes
     private boolean hasChanges = false;
@@ -166,6 +171,7 @@ public class EquationTableEditDialog extends Dialog {
         hints = new String[MAX_ROWS];
         nominalVariableColorHex = tableElement.getNominalVariableColorHex();
         realVariableColorHex = tableElement.getRealVariableColorHex();
+        adjustableVariableColorHex = tableElement.getAdjustableVariableColorHex();
         
         for (int i = 0; i < MAX_ROWS; i++) {
             outputNames[i] = tableElement.getUIDisplayOutputName(i);
@@ -244,10 +250,14 @@ public class EquationTableEditDialog extends Dialog {
         nominalColorBox.setTitle("Uppercase nominal / money variable color (#RRGGBB)");
         nominalColorBox.addKeyUpHandler(new KeyUpHandler() {
             public void onKeyUp(KeyUpEvent event) {
+                updateColorSwatches();
                 markChanged();
             }
         });
         titlePanel.add(nominalColorBox);
+
+        nominalColorSwatch = createColorPreviewSwatch();
+        titlePanel.add(nominalColorSwatch);
 
         Label realColorLabel = new Label("Real:");
         realColorLabel.getElement().getStyle().setProperty("marginLeft", "6px");
@@ -260,10 +270,36 @@ public class EquationTableEditDialog extends Dialog {
         realColorBox.setTitle("Lowercase real variable color (#RRGGBB)");
         realColorBox.addKeyUpHandler(new KeyUpHandler() {
             public void onKeyUp(KeyUpEvent event) {
+                updateColorSwatches();
                 markChanged();
             }
         });
         titlePanel.add(realColorBox);
+
+        realColorSwatch = createColorPreviewSwatch();
+        titlePanel.add(realColorSwatch);
+
+        Label adjustableColorLabel = new Label("Adjustable:");
+        adjustableColorLabel.getElement().getStyle().setProperty("marginLeft", "6px");
+        adjustableColorLabel.setTitle("Adjustable numeric variable color (#RRGGBB)");
+        titlePanel.add(adjustableColorLabel);
+
+        adjustableColorBox = new TextBox();
+        adjustableColorBox.setWidth("84px");
+        adjustableColorBox.setText(adjustableVariableColorHex);
+        adjustableColorBox.setTitle("Adjustable numeric variable color (#RRGGBB)");
+        adjustableColorBox.addKeyUpHandler(new KeyUpHandler() {
+            public void onKeyUp(KeyUpEvent event) {
+                updateColorSwatches();
+                markChanged();
+            }
+        });
+        titlePanel.add(adjustableColorBox);
+
+        adjustableColorSwatch = createColorPreviewSwatch();
+        titlePanel.add(adjustableColorSwatch);
+
+        updateColorSwatches();
 
         mainPanel.add(titlePanel);
         
@@ -1521,6 +1557,7 @@ public class EquationTableEditDialog extends Dialog {
     private void applyChanges() {
         String nominalColor = nominalColorBox.getText() == null ? "" : nominalColorBox.getText().trim();
         String realColor = realColorBox.getText() == null ? "" : realColorBox.getText().trim();
+        String adjustableColor = adjustableColorBox.getText() == null ? "" : adjustableColorBox.getText().trim();
         if (!EquationTableVariableColoring.isValidColorHex(nominalColor)) {
             setStatus("Nominal color must use #RRGGBB");
             return;
@@ -1529,9 +1566,14 @@ public class EquationTableEditDialog extends Dialog {
             setStatus("Real color must use #RRGGBB");
             return;
         }
+        if (!EquationTableVariableColoring.isValidColorHex(adjustableColor)) {
+            setStatus("Adjustable color must use #RRGGBB");
+            return;
+        }
 
         tableElement.setNominalVariableColorHex(nominalColor);
         tableElement.setRealVariableColorHex(realColor);
+        tableElement.setAdjustableVariableColorHex(adjustableColor);
 
         // Apply table name
         tableElement.setTableName(tableNameBox.getText());
@@ -1594,6 +1636,38 @@ public class EquationTableEditDialog extends Dialog {
     private void markChanged() {
         hasChanges = true;
         applyButton.setEnabled(true);
+    }
+
+    private Label createColorPreviewSwatch() {
+        Label swatch = new Label("");
+        swatch.setWidth("18px");
+        swatch.setHeight("18px");
+        swatch.getElement().getStyle().setProperty("display", "inline-block");
+        swatch.getElement().getStyle().setProperty("border", "1px solid #9ca3af");
+        swatch.getElement().getStyle().setProperty("borderRadius", "4px");
+        swatch.getElement().getStyle().setProperty("boxSizing", "border-box");
+        return swatch;
+    }
+
+    private void updateColorSwatches() {
+        updateColorSwatch(nominalColorSwatch, nominalColorBox, "Nominal color preview");
+        updateColorSwatch(realColorSwatch, realColorBox, "Real color preview");
+        updateColorSwatch(adjustableColorSwatch, adjustableColorBox, "Adjustable color preview");
+    }
+
+    private void updateColorSwatch(Label swatch, TextBox textBox, String tooltip) {
+        if (swatch == null || textBox == null) {
+            return;
+        }
+        String colorText = textBox.getText() == null ? "" : textBox.getText().trim();
+        swatch.setTitle(tooltip + ": " + (colorText.isEmpty() ? "(invalid)" : colorText));
+        if (EquationTableVariableColoring.isValidColorHex(colorText)) {
+            swatch.getElement().getStyle().setProperty("backgroundColor", colorText);
+            swatch.getElement().getStyle().setProperty("opacity", "1");
+        } else {
+            swatch.getElement().getStyle().setProperty("backgroundColor", "#ffffff");
+            swatch.getElement().getStyle().setProperty("opacity", "0.45");
+        }
     }
     
     /**

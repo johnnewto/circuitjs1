@@ -895,6 +895,8 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         }
 
         CircuitElm clickedElm = sim.getMouseElmForRouting();
+        int gx = sim.inverseTransformX(e.getX());
+        int gy = sim.inverseTransformY(e.getY());
         boolean simpleClickBringToFront =
             tempMouseMode == CirSim.MODE_SELECT &&
             selectedArea == null &&
@@ -904,6 +906,15 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
 
         if (tempMouseMode == CirSim.MODE_SELECT && selectedArea == null)
             sim.getClipboardManager().clearSelection();
+
+        if (simpleClickBringToFront && clickedElm instanceof EquationTableElm) {
+            EquationTableElm equationTable = (EquationTableElm) clickedElm;
+            boolean handledTraceClick = equationTable.handleTraceClick(gx, gy,
+                    e.isShiftKeyDown(), e.isControlKeyDown() || e.isMetaKeyDown());
+            if (handledTraceClick) {
+                sim.repaint();
+            }
+        }
 
         if (simpleClickBringToFront)
             sim.bringToFront(clickedElm);

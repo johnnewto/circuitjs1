@@ -87,15 +87,22 @@ final class StatusInfoRenderer {
             int hintHeight = verticalPadding * 2 + tooltipLines.size() * lineHeight;
             int radius = 6;
 
-            int tooltipX = sim.getMouseCursorX() - hintWidth / 2;
-            int tooltipY = sim.getMouseCursorY() - hintHeight - 10;
+            int mouseX = sim.getMouseCursorX();
+            int mouseY = sim.getMouseCursorY();
+            int cursorGapX = 16;
+            int cursorGapY = 10;
 
+            int tooltipX = mouseX + cursorGapX;
+            int tooltipY = mouseY - hintHeight - cursorGapY;
+
+            if (tooltipX + hintWidth > sim.canvasWidth - 8)
+                tooltipX = mouseX - hintWidth - cursorGapX;
             if (tooltipX < 8)
                 tooltipX = 8;
             if (tooltipX + hintWidth > sim.canvasWidth - 8)
                 tooltipX = sim.canvasWidth - hintWidth - 8;
             if (tooltipY < 8)
-                tooltipY = sim.getMouseCursorY() + 20;
+                tooltipY = mouseY + 20;
 
             g.context.setShadowColor("rgba(0, 0, 0, 0.25)");
             g.context.setShadowBlur(8);

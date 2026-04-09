@@ -82,13 +82,19 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     private static final double DEFAULT_CONVERGENCE_TOLERANCE = 0.001;
 
     /** Serialization marker for table-level rendering settings. */
-    private static final String SERIALIZATION_VERSION_TOKEN = "__etv2__";
+    private static final String SERIALIZATION_VERSION_TOKEN = "__etv3__";
+
+    /** Previous serialization marker retained for backward compatibility. */
+    private static final String SERIALIZATION_VERSION_TOKEN_V2 = "__etv2__";
 
     /** Default color for uppercase nominal/money variables in rendered equations. */
     private static final Color DEFAULT_NOMINAL_VARIABLE_COLOR = new Color("#4a8cff");
 
     /** Default color for lowercase real variables in rendered equations. */
     private static final Color DEFAULT_REAL_VARIABLE_COLOR = new Color("#2fb35f");
+
+    /** Default color for adjustable variables in rendered equations. */
+    private static final Color DEFAULT_ADJUSTABLE_VARIABLE_COLOR = new Color("#d97706");
 
     /** Maximum rows shown on-canvas before vertical scrolling is enabled. */
     private static final int MAX_VISIBLE_ROWS_NORMAL = 12;
@@ -119,6 +125,22 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         FLOW_MODE,
         /** Parameter mode: computes value and publishes to ComputedValues only */
         PARAM_MODE
+    }
+
+    /** Direction for dependency tracing overlays. */
+    public enum TraceDirection {
+        NONE,
+        INPUTS,
+        OUTPUTS,
+        BOTH;
+
+        boolean includesInputs() {
+            return this == INPUTS || this == BOTH;
+        }
+
+        boolean includesOutputs() {
+            return this == OUTPUTS || this == BOTH;
+        }
     }
 
     /** True when a row name encodes a non-simulating comment line. */
@@ -473,6 +495,48 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
 
     /** Mouse offset inside the scrollbar thumb while dragging. */
     private int scrollbarDragAnchorY;
+
+    /** Cached same-period dependency graph for row tracing and classification helpers. */
+    private EquationDependencyGraph dependencyGraphCache;
+
+    /** True when the cached dependency graph needs rebuilding. */
+    private boolean dependencyGraphDirty = true;
+
+    /** Sticky trace root selected by click interaction, or empty when no selection exists. */
+    private String selectedTraceRootName = "";
+
+    /** Sticky trace direction selected by click interaction. */
+    private TraceDirection selectedTraceDirection = TraceDirection.NONE;
+
+    /** Table currently owning the circuit-wide hover preview trace. */
+    private static EquationTableElm globalHoveredTraceOwner;
+
+    /** Circuit-wide hover trace root name. */
+    private static String globalHoveredTraceRootName = "";
+
+    /** Circuit-wide hover trace direction. */
+    private static TraceDirection globalHoveredTraceDirection = TraceDirection.NONE;
+
+    /** Circuit-wide pinned trace root name. */
+    private static String globalSelectedTraceRootName = "";
+
+    /** Circuit-wide pinned trace direction. */
+    private static TraceDirection globalSelectedTraceDirection = TraceDirection.NONE;
+
+    /** Last resolved effective trace root name (selected or hover-derived). */
+    private String effectiveTraceRootName = "";
+
+    /** Last resolved effective trace direction. */
+    private TraceDirection effectiveTraceDirection = TraceDirection.NONE;
+
+    /** Direct input names for the current effective trace root. */
+    private java.util.LinkedHashSet<String> effectiveTraceInputs = new java.util.LinkedHashSet<String>();
+
+    /** Direct output names for the current effective trace root. */
+    private java.util.LinkedHashSet<String> effectiveTraceOutputs = new java.util.LinkedHashSet<String>();
+
+    /** True when effective trace input/output sets must be recomputed. */
+    private boolean effectiveTraceDirty = true;
     
     /** Details about the convergence failure */
     private String convergenceFailureInfo = null;
@@ -511,6 +575,9 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
 
     /** Per-table render color for lowercase real variables. */
     private Color realVariableColor = DEFAULT_REAL_VARIABLE_COLOR;
+
+    /** Per-table render color for adjustable variables. */
+    private Color adjustableVariableColor = DEFAULT_ADJUSTABLE_VARIABLE_COLOR;
     
     //=============================================================================
     // CONSTRUCTORS
@@ -587,9 +654,15 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
 
         int tokenStartIndex = 0;
-        if (tokenCount >= 3 && SERIALIZATION_VERSION_TOKEN.equals(tokens.get(0))) {
+        if (tokenCount >= 4 && SERIALIZATION_VERSION_TOKEN.equals(tokens.get(0))) {
             nominalVariableColor = EquationTableVariableColoring.parseColorOrDefault(tokens.get(1), DEFAULT_NOMINAL_VARIABLE_COLOR);
             realVariableColor = EquationTableVariableColoring.parseColorOrDefault(tokens.get(2), DEFAULT_REAL_VARIABLE_COLOR);
+            adjustableVariableColor = EquationTableVariableColoring.parseColorOrDefault(tokens.get(3), DEFAULT_ADJUSTABLE_VARIABLE_COLOR);
+            tokenStartIndex = 4;
+        } else if (tokenCount >= 3 && SERIALIZATION_VERSION_TOKEN_V2.equals(tokens.get(0))) {
+            nominalVariableColor = EquationTableVariableColoring.parseColorOrDefault(tokens.get(1), DEFAULT_NOMINAL_VARIABLE_COLOR);
+            realVariableColor = EquationTableVariableColoring.parseColorOrDefault(tokens.get(2), DEFAULT_REAL_VARIABLE_COLOR);
+            adjustableVariableColor = DEFAULT_ADJUSTABLE_VARIABLE_COLOR;
             tokenStartIndex = 3;
         }
         int remainingTokenCount = tokenCount - tokenStartIndex;
@@ -728,6 +801,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     /** Mark global parameter/computed name registries for this table as stale. */
     private void markNameRegistriesDirty() {
         nameRegistriesDirty = true;
+        invalidateDependencyGraph();
     }
 
     /** Refresh global name registries only when row metadata changed. */
@@ -1098,6 +1172,137 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      */
     private void invalidateClassifications() {
         classificationsValid = false;
+        invalidateDependencyGraph();
+    }
+
+    private void invalidateDependencyGraph() {
+        dependencyGraphDirty = true;
+        dependencyGraphCache = null;
+        invalidateEffectiveTrace();
+    }
+
+    private void invalidateEffectiveTrace() {
+        effectiveTraceDirty = true;
+        if (renderer != null) {
+            renderer.invalidateContentCache();
+        }
+    }
+
+    private EquationDependencyGraph getDependencyGraph() {
+        if (!dependencyGraphDirty && dependencyGraphCache != null) {
+            return dependencyGraphCache;
+        }
+        dependencyGraphDirty = false;
+        dependencyGraphCache = (sim == null)
+                ? EquationDependencyGraph.buildFromDefinitions(new java.util.ArrayList<EquationDependencyGraph.Definition>(), false)
+                : EquationDependencyGraph.build(sim, false, false, false);
+        return dependencyGraphCache;
+    }
+
+    private void ensureEffectiveTrace() {
+        if (!effectiveTraceDirty) {
+            return;
+        }
+        effectiveTraceDirty = false;
+        effectiveTraceInputs.clear();
+        effectiveTraceOutputs.clear();
+        effectiveTraceRootName = "";
+        effectiveTraceDirection = TraceDirection.NONE;
+
+        String rootName = globalSelectedTraceRootName;
+        TraceDirection direction = globalSelectedTraceDirection;
+        if (rootName == null || rootName.trim().isEmpty() || direction == TraceDirection.NONE) {
+            rootName = globalHoveredTraceRootName;
+            direction = globalHoveredTraceDirection;
+        }
+
+        rootName = rootName == null ? "" : rootName.trim();
+        if (rootName.length() == 0 || direction == TraceDirection.NONE) {
+            return;
+        }
+
+        EquationDependencyGraph graph = getDependencyGraph();
+        if (graph == null || graph.getNodeIndex(rootName) < 0) {
+            effectiveTraceRootName = rootName;
+            effectiveTraceDirection = direction;
+            return;
+        }
+
+        effectiveTraceRootName = rootName;
+        effectiveTraceDirection = direction;
+        if (direction.includesInputs()) {
+            effectiveTraceInputs.addAll(graph.getDirectInputs(rootName));
+        }
+        if (direction.includesOutputs()) {
+            effectiveTraceOutputs.addAll(graph.getDirectOutputs(rootName));
+        }
+    }
+
+    private static void invalidateAllTraceOverlays(CirSim sim) {
+        if (sim == null || sim.elmList == null) {
+            return;
+        }
+        for (int i = 0; i < sim.elmList.size(); i++) {
+            CircuitElm ce = sim.getElm(i);
+            if (ce instanceof EquationTableElm) {
+                ((EquationTableElm) ce).invalidateEffectiveTrace();
+            }
+        }
+    }
+
+    private static void setGlobalSelectedTrace(CirSim sim, String rootName, TraceDirection direction) {
+        String normalizedRoot = rootName == null ? "" : rootName.trim();
+        TraceDirection normalizedDirection = direction == null ? TraceDirection.NONE : direction;
+        if (normalizedRoot.length() == 0) {
+            normalizedDirection = TraceDirection.NONE;
+        }
+        if (normalizedRoot.equals(globalSelectedTraceRootName) && normalizedDirection == globalSelectedTraceDirection) {
+            return;
+        }
+        globalSelectedTraceRootName = normalizedRoot;
+        globalSelectedTraceDirection = normalizedDirection;
+        invalidateAllTraceOverlays(sim);
+    }
+
+    private static void setGlobalHoveredTrace(EquationTableElm owner, int hoveredRow) {
+        if (owner == null) {
+            return;
+        }
+
+        EquationTableElm nextOwner = globalHoveredTraceOwner;
+        String nextRoot = globalHoveredTraceRootName;
+        TraceDirection nextDirection = globalHoveredTraceDirection;
+
+        if (hoveredRow >= 0 && hoveredRow < owner.rowCount && !owner.isCommentRow(hoveredRow)) {
+            String rowName = owner.rows[hoveredRow].outputName;
+            nextOwner = owner;
+            nextRoot = rowName == null ? "" : rowName.trim();
+            nextDirection = nextRoot.length() > 0 ? TraceDirection.INPUTS : TraceDirection.NONE;
+        } else if (globalHoveredTraceOwner == owner) {
+            nextOwner = null;
+            nextRoot = "";
+            nextDirection = TraceDirection.NONE;
+        }
+
+        if (nextOwner == globalHoveredTraceOwner
+                && nextRoot.equals(globalHoveredTraceRootName)
+                && nextDirection == globalHoveredTraceDirection) {
+            return;
+        }
+
+        globalHoveredTraceOwner = nextOwner;
+        globalHoveredTraceRootName = nextRoot;
+        globalHoveredTraceDirection = nextDirection;
+        invalidateAllTraceOverlays(owner.sim);
+    }
+
+    /** Clear all circuit-wide hover/pinned trace state. */
+    public static void resetGlobalTraceState() {
+        globalHoveredTraceOwner = null;
+        globalHoveredTraceRootName = "";
+        globalHoveredTraceDirection = TraceDirection.NONE;
+        globalSelectedTraceRootName = "";
+        globalSelectedTraceDirection = TraceDirection.NONE;
     }
     
     //=============================================================================
@@ -2187,6 +2392,12 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
 
     @Override
     protected void delete() {
+        if (globalHoveredTraceOwner == this) {
+            globalHoveredTraceOwner = null;
+            globalHoveredTraceRootName = "";
+            globalHoveredTraceDirection = TraceDirection.NONE;
+            invalidateAllTraceOverlays(sim);
+        }
         unregisterNameRegistries();
         super.delete();
     }
@@ -2208,6 +2419,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         sb.append(" ").append(SERIALIZATION_VERSION_TOKEN);
         sb.append(" ").append(nominalVariableColor.getHexValue());
         sb.append(" ").append(realVariableColor.getHexValue());
+        sb.append(" ").append(adjustableVariableColor.getHexValue());
         
         // Serialize each row's data
         for (int row = 0; row < rowCount; row++) {
@@ -2561,11 +2773,17 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     /** Get render color for lowercase real variables. */
     public Color getRealVariableColor() { return realVariableColor; }
 
+    /** Get render color for adjustable variables. */
+    public Color getAdjustableVariableColor() { return adjustableVariableColor; }
+
     /** Get nominal variable render color in persisted hex form. */
     public String getNominalVariableColorHex() { return nominalVariableColor.getHexValue(); }
 
     /** Get real variable render color in persisted hex form. */
     public String getRealVariableColorHex() { return realVariableColor.getHexValue(); }
+
+    /** Get adjustable variable render color in persisted hex form. */
+    public String getAdjustableVariableColorHex() { return adjustableVariableColor.getHexValue(); }
 
     /** Set nominal variable render color from a #RRGGBB string. */
     public void setNominalVariableColorHex(String colorText) {
@@ -2581,6 +2799,42 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         if (renderer != null) {
             renderer.invalidateContentCache();
         }
+    }
+
+    /** Set adjustable variable render color from a #RRGGBB string. */
+    public void setAdjustableVariableColorHex(String colorText) {
+        adjustableVariableColor = EquationTableVariableColoring.parseColorOrDefault(colorText, DEFAULT_ADJUSTABLE_VARIABLE_COLOR);
+        if (renderer != null) {
+            renderer.invalidateContentCache();
+        }
+    }
+
+    /** Collect output names for adjustable numeric rows across all equation tables in the current circuit. */
+    public java.util.Set<String> collectAdjustableVariableNames() {
+        java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<String>();
+        if (sim == null || sim.elmList == null) {
+            return names;
+        }
+        for (int i = 0; i < sim.elmList.size(); i++) {
+            CircuitElm ce = sim.getElm(i);
+            if (!(ce instanceof EquationTableElm)) {
+                continue;
+            }
+            EquationTableElm equationTable = (EquationTableElm) ce;
+            for (int row = 0; row < equationTable.getRowCount(); row++) {
+                if (!equationTable.isAdjustableRow(row)) {
+                    continue;
+                }
+                String outputName = equationTable.getOutputName(row);
+                if (outputName != null) {
+                    String trimmed = outputName.trim();
+                    if (!trimmed.isEmpty() && !isCommentRowName(trimmed)) {
+                        names.add(trimmed);
+                    }
+                }
+            }
+        }
+        return names;
     }
 
     /** Get global base convergence tolerance used by equation tables. */
@@ -2625,6 +2879,8 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     /** Set the hovered row index and update cursor for adjustable rows */
     public void setHoveredRow(int row) {
         hoveredRow = row;
+        setGlobalHoveredTrace(this, row);
+        invalidateEffectiveTrace();
         // Update cursor based on whether row is adjustable
         if (row >= 0 && isAdjustableRow(row)) {
             sim.setCursorStyleForUi("cursorAdjust");
@@ -2777,6 +3033,154 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     /** Scroll the visible viewport by the given number of rows. */
     public boolean scrollByRows(int rowDelta) {
         return setFirstVisibleRow(firstVisibleRow + rowDelta);
+    }
+
+    /** True when a hover- or click-based dependency trace is currently active. */
+    public boolean hasTraceHighlight() {
+        ensureEffectiveTrace();
+        return effectiveTraceRootName.length() > 0 && effectiveTraceDirection != TraceDirection.NONE;
+    }
+
+    /** True if the given row is the root row of the active trace. */
+    public boolean isTraceRootRow(int row) {
+        ensureEffectiveTrace();
+        return isTraceRowNameMatch(row, effectiveTraceRootName);
+    }
+
+    /** True if the given row is a direct input of the active trace root. */
+    public boolean isTraceInputRow(int row) {
+        ensureEffectiveTrace();
+        return isTraceRowNameContained(row, effectiveTraceInputs);
+    }
+
+    /** True if the given row is a direct output of the active trace root. */
+    public boolean isTraceOutputRow(int row) {
+        ensureEffectiveTrace();
+        return isTraceRowNameContained(row, effectiveTraceOutputs);
+    }
+
+    /** Get the effective direction being displayed for the active trace overlay. */
+    public TraceDirection getEffectiveTraceDirection() {
+        ensureEffectiveTrace();
+        return effectiveTraceDirection;
+    }
+
+    /** True if the displayed token belongs to the active trace root or its related rows. */
+    public boolean shouldBoldTraceToken(String token) {
+        ensureEffectiveTrace();
+        if (effectiveTraceDirection == TraceDirection.NONE || token == null) {
+            return false;
+        }
+        String trimmed = token.trim();
+        if (trimmed.length() == 0) {
+            return false;
+        }
+        return traceTokenMatches(trimmed, effectiveTraceRootName)
+            || traceTokenContained(trimmed, effectiveTraceInputs)
+            || traceTokenContained(trimmed, effectiveTraceOutputs);
+    }
+
+    /** Clear sticky trace selection; hover tracing remains available. */
+    public void clearTraceSelection() {
+        selectedTraceRootName = "";
+        selectedTraceDirection = TraceDirection.NONE;
+        setGlobalSelectedTrace(sim, "", TraceDirection.NONE);
+    }
+
+    /** Handle click-based dependency tracing for a row under the given circuit-space point. */
+    public boolean handleTraceClick(int circuitX, int circuitY, boolean shiftDown, boolean metaDown) {
+        if (circuitX < x || circuitX > x + tableWidth || circuitY < y || circuitY > y + tableHeight) {
+            return false;
+        }
+        if (isScrollbarHit(circuitX, circuitY)) {
+            return false;
+        }
+
+        int row = getRowAtCircuitPoint(circuitX, circuitY);
+        if (row < 0 || row >= rowCount || isCommentRow(row)) {
+            clearTraceSelection();
+            return true;
+        }
+
+        TraceDirection newDirection = metaDown ? TraceDirection.BOTH : (shiftDown ? TraceDirection.OUTPUTS : TraceDirection.INPUTS);
+        String newRootName = rows[row].outputName == null ? "" : rows[row].outputName.trim();
+        if (newRootName.length() == 0) {
+            clearTraceSelection();
+            return true;
+        }
+
+        if (newRootName.equals(globalSelectedTraceRootName) && newDirection == globalSelectedTraceDirection) {
+            clearTraceSelection();
+        } else {
+            selectedTraceRootName = newRootName;
+            selectedTraceDirection = newDirection;
+            setGlobalSelectedTrace(sim, newRootName, newDirection);
+        }
+        return true;
+    }
+
+    private boolean isTraceRowNameMatch(int row, String name) {
+        if (row < 0 || row >= rowCount || isCommentRow(row) || name == null || name.length() == 0) {
+            return false;
+        }
+        String rowName = rows[row].outputName;
+        return rowName != null && name.equals(rowName.trim());
+    }
+
+    private boolean isTraceRowNameContained(int row, java.util.Set<String> names) {
+        if (row < 0 || row >= rowCount || isCommentRow(row) || names == null || names.isEmpty()) {
+            return false;
+        }
+        String rowName = rows[row].outputName;
+        return rowName != null && names.contains(rowName.trim());
+    }
+
+    private boolean traceTokenContained(String token, java.util.Set<String> names) {
+        if (names == null || names.isEmpty()) {
+            return false;
+        }
+        for (String name : names) {
+            if (traceTokenMatches(token, name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean traceTokenMatches(String token, String name) {
+        if (token == null || name == null) {
+            return false;
+        }
+        String trimmedToken = token.trim();
+        String trimmedName = name.trim();
+        if (trimmedToken.length() == 0 || trimmedName.length() == 0) {
+            return false;
+        }
+        if (trimmedToken.equals(trimmedName)) {
+            return true;
+        }
+        String convertedToken = Locale.convertGreekSymbols(trimmedToken);
+        String convertedName = Locale.convertGreekSymbols(trimmedName);
+        return trimmedToken.equals(convertedName)
+            || convertedToken.equals(trimmedName)
+            || convertedToken.equals(convertedName);
+    }
+
+    private int getRowAtCircuitPoint(int circuitX, int circuitY) {
+        if (circuitX < x || circuitX > x + tableWidth || circuitY < y || circuitY > y + tableHeight) {
+            return -1;
+        }
+        int relativeY = circuitY - (y + rowHeight);
+        if (relativeY < 0) {
+            return -1;
+        }
+        int mouseRowIndex = relativeY / rowHeight;
+        int visibleRowCount = getVisibleRowCount();
+        if (mouseRowIndex < 0 || mouseRowIndex >= visibleRowCount) {
+            return -1;
+        }
+        int row = getFirstVisibleRow() + mouseRowIndex;
+        return row < rowCount ? row : -1;
     }
     
     /** Get row classification as string */

@@ -34,12 +34,16 @@ button.active{background:#e8f0fe;border-color:#9bb6f0;}
 <label style='user-select:none;'><input id='useHints' type='checkbox'/> Use hint text for labels</label>
 <label style='user-select:none;'><input id='ignoreParams' type='checkbox' checked/> Ignore # Parameters / # External sections</label>
 <label style='user-select:none;'><input id='ignoreAdjustable' type='checkbox' checked/> Ignore adjustable rows</label>
+<label>Trace:</label>
+<select id='traceDir'><option value='inputs' selected>Inputs</option><option value='outputs'>Outputs</option><option value='both'>Both</option></select>
+<select id='traceDepth'><option value='direct' selected>Direct</option><option value='transitive'>Transitive</option></select>
 <button id='toggleLegend'>Hide Legend</button>
 </div>
 <div id='status'>
 <span id='modeBadge' class='badge'></span>
 <span id='filterBadge' class='badge'></span>
-<span class='badge'>Tip: click node to highlight neighborhood</span>
+<span id='traceBadge' class='badge'></span>
+<span class='badge'>Tip: hover previews trace, click pins it, click background clears</span>
 </div>
 <div id='mainLoopNote'></div>
 <div id='nodeHoverTip'></div>
@@ -57,6 +61,8 @@ const historicalNoParamsNoAdjustableData=__HISTORICAL_NO_PARAMS_NO_ADJUSTABLE_DA
 let active='same';
 let cy=null;
 let hoverTipEl=null;
+let pinnedNodeId=null;
+let hoveredNodeId=null;
 function colorForBlock(block){const c=__BLOCK_COLORS_JS_ARRAY__;return c[(Math.max(1,block)-1)%c.length];}
 function formatMathLabel(text){
   if(!text) return '';
@@ -303,8 +309,12 @@ function updateStatusBadges(){
   if(document.getElementById('ignoreParams').checked) filters.push('Parameters/External Excluded');
   if(document.getElementById('ignoreAdjustable').checked) filters.push('Adjustable Rows Excluded');
   const filterText = filters.length ? ('Filter: ' + filters.join(' + ')) : 'Filter: None';
+  const traceDir = document.getElementById('traceDir').value;
+  const traceDepth = document.getElementById('traceDepth').value;
+  const traceText = 'Trace: ' + (traceDir === 'both' ? 'Inputs + Outputs' : (traceDir === 'outputs' ? 'Outputs' : 'Inputs')) + ' / ' + (traceDepth === 'transitive' ? 'Transitive' : 'Direct');
   document.getElementById('modeBadge').textContent = formatMathLabel(modeText);
   document.getElementById('filterBadge').textContent = formatMathLabel(filterText);
+  document.getElementById('traceBadge').textContent = formatMathLabel(traceText);
 }
 function buildLegend(){
   const legend = document.getElementById('legend');
@@ -347,12 +357,101 @@ function applyLabelMode(){
 }
 function clearHighlight(){
   if(!cy) return;
-  cy.elements().removeClass('faded');
+  cy.elements().removeClass('faded traceRoot traceInput traceOutput traceHistorical');
+}
+function getTraceDirection(){
+  return document.getElementById('traceDir') ? document.getElementById('traceDir').value : 'inputs';
+}
+function isTransitiveTrace(){
+  return !!(document.getElementById('traceDepth') && document.getElementById('traceDepth').value === 'transitive');
+}
+function getIncomingRelations(node){
+  const rel=[];
+  node.connectedEdges().forEach(function(edge){
+    if(edge.target().id() === node.id()) rel.push({edge:edge, other:edge.source()});
+  });
+  return rel;
+}
+function getOutgoingRelations(node){
+  const rel=[];
+  node.connectedEdges().forEach(function(edge){
+    if(edge.source().id() === node.id()) rel.push({edge:edge, other:edge.target()});
+  });
+  return rel;
+}
+function createTraceResult(){
+  return {nodes:cy.collection(),edges:cy.collection(),inputNodes:cy.collection(),inputEdges:cy.collection(),outputNodes:cy.collection(),outputEdges:cy.collection(),historicalNodes:cy.collection(),historicalEdges:cy.collection()};
+}
+function traverseDirection(result, startNode, mode, transitive){
+  const visited={};
+  visited[startNode.id()]=true;
+  let frontier=[startNode];
+  while(frontier.length){
+    const next=[];
+    for(let i=0;i<frontier.length;i++){
+      const node=frontier[i];
+      const relations = mode === 'inputs' ? getIncomingRelations(node) : getOutgoingRelations(node);
+      for(let j=0;j<relations.length;j++){
+        const relation=relations[j];
+        const edge=relation.edge;
+        const other=relation.other;
+        result.nodes = result.nodes.add(other);
+        result.edges = result.edges.add(edge);
+        if(mode === 'inputs'){
+          result.inputNodes = result.inputNodes.add(other);
+          result.inputEdges = result.inputEdges.add(edge);
+        } else {
+          result.outputNodes = result.outputNodes.add(other);
+          result.outputEdges = result.outputEdges.add(edge);
+        }
+        if(edge.data('historical')){
+          result.historicalNodes = result.historicalNodes.add(other);
+          result.historicalEdges = result.historicalEdges.add(edge);
+        }
+        if(transitive && !visited[other.id()]){
+          visited[other.id()]=true;
+          next.push(other);
+        }
+      }
+    }
+    if(!transitive) break;
+    frontier = next;
+  }
+}
+function applyTraceHighlight(node){
+  if(!cy || !node || !node.length) return;
+  clearHighlight();
+  const result = createTraceResult();
+  const direction = getTraceDirection();
+  const transitive = isTransitiveTrace();
+  if(direction === 'inputs' || direction === 'both') traverseDirection(result, node, 'inputs', transitive);
+  if(direction === 'outputs' || direction === 'both') traverseDirection(result, node, 'outputs', transitive);
+  cy.elements().addClass('faded');
+  node.removeClass('faded').addClass('traceRoot');
+  result.nodes.removeClass('faded');
+  result.edges.removeClass('faded');
+  result.inputNodes.addClass('traceInput');
+  result.inputEdges.addClass('traceInput');
+  result.outputNodes.addClass('traceOutput');
+  result.outputEdges.addClass('traceOutput');
+  result.historicalNodes.addClass('traceHistorical');
+  result.historicalEdges.addClass('traceHistorical');
+}
+function applyCurrentTraceHighlight(){
+  if(!cy) return;
+  const nodeId = pinnedNodeId || hoveredNodeId;
+  if(!nodeId){ clearHighlight(); return; }
+  const node = cy.getElementById(nodeId);
+  if(node && node.length) applyTraceHighlight(node);
 }
 function enableNeighborhoodHighlight(){
   if(!cy) return;
   cy.on('mouseover', 'node', function(evt){
     const n = evt.target;
+    if(!pinnedNodeId){
+      hoveredNodeId = n.id();
+      applyCurrentTraceHighlight();
+    }
     const tip = (n && n.data) ? (n.data('hintEq') || '') : '';
     if(tip) showHoverTip(evt, tip);
     else hideHoverTip();
@@ -362,14 +461,26 @@ function enableNeighborhoodHighlight(){
     const tip = (n && n.data) ? (n.data('hintEq') || '') : '';
     if(tip) showHoverTip(evt, tip);
   });
-  cy.on('mouseout', 'node', function(){ hideHoverTip(); });
+  cy.on('mouseout', 'node', function(){
+    hideHoverTip();
+    if(!pinnedNodeId){
+      hoveredNodeId = null;
+      clearHighlight();
+    }
+  });
   cy.on('tap', 'node', function(evt){
     const n = evt.target;
-    cy.elements().addClass('faded');
-    const keep = n.closedNeighborhood();
-    keep.removeClass('faded');
+    if(pinnedNodeId === n.id()){
+      pinnedNodeId = null;
+      hoveredNodeId = null;
+      clearHighlight();
+    } else {
+      pinnedNodeId = n.id();
+      hoveredNodeId = null;
+      applyCurrentTraceHighlight();
+    }
   });
-  cy.on('tap', function(evt){ if(evt.target === cy){ clearHighlight(); } });
+  cy.on('tap', function(evt){ if(evt.target === cy){ pinnedNodeId = null; hoveredNodeId = null; clearHighlight(); } });
 }
 function renderGraph(mode){
   const g=getActiveDataset(mode);
@@ -395,6 +506,13 @@ function renderGraph(mode){
       {selector:'node[cyclical = 1]',style:{'shape':'rectangle','border-width':2}},
       {selector:'edge',style:{'curve-style':'bezier','width':1.2,'line-color':'#999','target-arrow-color':'#999','target-arrow-shape':'triangle','arrow-scale':0.9,'opacity':0.65}},
       {selector:'edge[lastDependency = 1]',style:{'line-style':'dashed','line-dash-pattern':[8,4],'line-color':'#666','target-arrow-color':'#666','opacity':0.9,'width':1.6}},
+      {selector:'node.traceRoot',style:{'border-width':5,'border-color':'#c17900','background-blacken':-0.08,'z-index':999}},
+      {selector:'node.traceInput',style:{'border-color':'#3568b8','background-color':'#dce9ff'}},
+      {selector:'edge.traceInput',style:{'line-color':'#3568b8','target-arrow-color':'#3568b8','width':2.4,'opacity':0.95}},
+      {selector:'node.traceOutput',style:{'border-color':'#7b4ab6','background-color':'#efe3ff'}},
+      {selector:'edge.traceOutput',style:{'line-color':'#7b4ab6','target-arrow-color':'#7b4ab6','width':2.4,'opacity':0.95}},
+      {selector:'node.traceHistorical',style:{'border-style':'dashed'}},
+      {selector:'edge.traceHistorical',style:{'line-style':'dashed','line-dash-pattern':[7,4]}},
       {selector:'.faded',style:{'opacity':0.14}},
       {selector:':selected',style:{'overlay-opacity':0,'border-color':'#111','line-color':'#555','target-arrow-color':'#555'}}
     ],
@@ -412,6 +530,7 @@ function renderGraph(mode){
   });
   applyLabelMode();
   enableNeighborhoodHighlight();
+  applyCurrentTraceHighlight();
   if(cy && cy.fit){cy.fit(undefined, 24);}
 }
 function setMode(mode){active=mode;document.getElementById('btnSame').classList.toggle('active',mode==='same');document.getElementById('btnHist').classList.toggle('active',mode==='historical');renderGraph(mode);}
@@ -422,6 +541,8 @@ document.getElementById('useHints').addEventListener('change',()=>renderGraph(ac
 document.getElementById('ignoreParams').addEventListener('change',()=>renderGraph(active));
 document.getElementById('ignoreAdjustable').addEventListener('change',()=>renderGraph(active));
 document.getElementById('labelMode').addEventListener('change',()=>{applyLabelMode(); if(cy){cy.fit(undefined,24);}});
+document.getElementById('traceDir').addEventListener('change',()=>{updateStatusBadges(); applyCurrentTraceHighlight();});
+document.getElementById('traceDepth').addEventListener('change',()=>{updateStatusBadges(); applyCurrentTraceHighlight();});
 document.getElementById('toggleLegend').addEventListener('click',()=>{const lg=document.getElementById('legend');const hidden=lg.classList.toggle('hidden');document.getElementById('toggleLegend').textContent=hidden?'Show Legend':'Hide Legend';});
 window.addEventListener('resize', function(){ if(cy){ cy.fit(undefined, 24); } });
 setMode('same');
