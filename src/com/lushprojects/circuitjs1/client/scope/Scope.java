@@ -746,13 +746,26 @@ public class Scope {
 	ScopeSelectionService.setElm(this, ce);
     }
 
+	public void setElmValue(CircuitElm ce, int value) {
+	setValue(value, ce);
+	initialize();
+	}
+
     public void setElmForEmbedded(CircuitElm ce) {
 	setElm(ce);
     }
+
+	public void setElmValueForEmbedded(CircuitElm ce, int value) {
+	setElmValue(ce, value);
+	}
     
     public void addElm(CircuitElm ce) {
 	ScopeSelectionService.addElm(this, ce);
     }
+
+	public void addElmValue(CircuitElm ce, int value) {
+	addValue(value, ce);
+	}
 
     void setValue(int val) {
 	if (plots.size() > 2 || plots.size() == 0)

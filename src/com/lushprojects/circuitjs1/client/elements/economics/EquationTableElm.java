@@ -483,6 +483,9 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     /** Currently hovered row index (-1 = none) - for tooltip display */
     private int hoveredRow = -1;
+
+    /** Row selected for the active context-menu scope action (-1 = none). */
+    private int menuScopeRow = -1;
     
     /** Row that failed convergence (-1 = none) - for debugging */
     private int failedConvergenceRow = -1;
@@ -1033,6 +1036,33 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     /** @return Number of electrical posts - always 0 (no visible posts) */
     public int getPostCount() { return 0; }
+
+    @Override
+    protected String getScopeText(int value) {
+        int row = findScopeRowByPlotValue(value);
+        if (row >= 0) {
+            return tableName + ": " + getFlowDisplayName(row);
+        }
+        return super.getScopeText(value);
+    }
+
+    @Override
+    protected double getScopeValue(int value) {
+        int row = findScopeRowByPlotValue(value);
+        if (row >= 0) {
+            return getDisplayValue(row);
+        }
+        return super.getScopeValue(value);
+    }
+
+    @Override
+    protected int getScopeUnits(int value) {
+        int row = findScopeRowByPlotValue(value);
+        if (row >= 0) {
+            return (rows[row].outputMode == RowOutputMode.FLOW_MODE) ? Scope.UNITS_A : Scope.UNITS_V;
+        }
+        return super.getScopeUnits(value);
+    }
     
     /**
      * Get the position of a post.
@@ -2871,6 +2901,39 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     /** Get the hovered row index (-1 if none) */
     public int getHoveredRow() { return hoveredRow; }
 
+    /** Get the row targeted by the currently open scope context-menu action. */
+    public int getMenuScopeRow() { return menuScopeRow; }
+
+    /** True if the context menu is currently targeting a scopeable row. */
+    public boolean hasMenuScopeRow() { return canViewRowInScope(menuScopeRow); }
+
+    /** Set the row targeted by the current context menu. */
+    public void setMenuScopeRow(int row) {
+        menuScopeRow = canViewRowInScope(row) ? row : -1;
+    }
+
+    /** Get the encoded scope-plot value representing a particular row. */
+    public int getScopePlotValueForRow(int row) {
+        if (!canViewRowInScope(row)) {
+            return 0;
+        }
+        return EquationTableScopePlotValue.encode(getScopePlotKey(row));
+    }
+
+    /** Return the scopeable row under a circuit-space point, or -1 when none. */
+    public int getScopeableRowAtCircuitPoint(int circuitX, int circuitY) {
+        int row = getRowAtCircuitPoint(circuitX, circuitY);
+        return canViewRowInScope(row) ? row : -1;
+    }
+
+    /** True when the given row can be plotted in a scope. */
+    public boolean canViewRowInScope(int row) {
+        return row >= 0
+            && row < rowCount
+            && !isCommentRow(row)
+            && getScopePlotKey(row).length() > 0;
+    }
+
     /** Convert current mouse X from screen space to circuit space. */
     public int getMouseCircuitX() { return sim.inverseTransformX(sim.getMouseCursorX()); }
 
@@ -3178,6 +3241,28 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
         int row = getFirstVisibleRow() + mouseRowIndex;
         return row < rowCount ? row : -1;
+    }
+
+    private int findScopeRowByPlotValue(int value) {
+        if (!EquationTableScopePlotValue.isEncoded(value)) {
+            return -1;
+        }
+        for (int row = 0; row < rowCount; row++) {
+            if (!canViewRowInScope(row)) {
+                continue;
+            }
+            if (EquationTableScopePlotValue.matches(value, getScopePlotKey(row))) {
+                return row;
+            }
+        }
+        return -1;
+    }
+
+    private String getScopePlotKey(int row) {
+        if (row < 0 || row >= rowCount || isCommentRow(row)) {
+            return "";
+        }
+        return EquationTableScopePlotValue.normalize(getDisplayOutputName(row));
     }
     
     /** Get row classification as string */

@@ -587,17 +587,25 @@ class MouseInputHandler implements MouseDownHandler, MouseMoveHandler, MouseUpHa
         } else if (sim.getMouseElmForRouting() != null) {
             CircuitElm mouseElm = sim.getMouseElmForRouting();
             if (!(mouseElm instanceof ScopeElm)) {
-                sim.elmScopeMenuItem.setEnabled(mouseElm.canViewInScope());
-                sim.elmFloatScopeMenuItem.setEnabled(mouseElm.canViewInScope());
+                boolean canViewInScope = mouseElm.canViewInScope();
+                if (mouseElm instanceof EquationTableElm) {
+                    EquationTableElm equationTable = (EquationTableElm) mouseElm;
+                    int circuitX = sim.inverseTransformX(sim.getMouseCursorX());
+                    int circuitY = sim.inverseTransformY(sim.getMouseCursorY());
+                    equationTable.setMenuScopeRow(equationTable.getScopeableRowAtCircuitPoint(circuitX, circuitY));
+                    canViewInScope = equationTable.hasMenuScopeRow();
+                }
+                sim.elmScopeMenuItem.setEnabled(canViewInScope);
+                sim.elmFloatScopeMenuItem.setEnabled(canViewInScope);
                 if ((sim.scopeCount + sim.getScopeManager().countScopeElms()) <= 1) {
                     sim.elmAddScopeMenuItem.setCommand(new MyCommand("elm", "addToScope0"));
                     sim.elmAddScopeMenuItem.setSubMenu(null);
-                    sim.elmAddScopeMenuItem.setEnabled(mouseElm.canViewInScope() && (sim.scopeCount + sim.getScopeManager().countScopeElms()) > 0);
+                    sim.elmAddScopeMenuItem.setEnabled(canViewInScope && (sim.scopeCount + sim.getScopeManager().countScopeElms()) > 0);
                 } else {
                     sim.getMenuBuilder().composeSelectScopeMenu(sim.getMenuUiState().selectScopeMenuBar);
                     sim.elmAddScopeMenuItem.setCommand(null);
                     sim.elmAddScopeMenuItem.setSubMenu(sim.getMenuUiState().selectScopeMenuBar);
-                    sim.elmAddScopeMenuItem.setEnabled(mouseElm.canViewInScope());
+                    sim.elmAddScopeMenuItem.setEnabled(canViewInScope);
                 }
                 sim.elmEditMenuItem.setEnabled(mouseElm.getEditInfo(0) != null);
                 sim.elmSwapMenuItem.setEnabled(mouseElm.getPostCount() == 2);

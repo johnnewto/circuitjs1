@@ -652,10 +652,10 @@ final class CirSimInitializer {
             }
         };
 
-        sim.getMenuUiState().elmMenuBar.addItem(sim.elmEditMenuItem = new MenuItem(Locale.LS("Edit..."), new MyCommand("elm", "edit")));
+        sim.getMenuUiState().elmMenuBar.addItem(sim.elmAddScopeMenuItem = new MenuItem(Locale.LS("Add to Existing Scope"), new MyCommand("elm", "addToScope0")));
         sim.getMenuUiState().elmMenuBar.addItem(sim.elmScopeMenuItem = new MenuItem(Locale.LS("View in New Scope"), new MyCommand("elm", "viewInScope")));
         sim.getMenuUiState().elmMenuBar.addItem(sim.elmFloatScopeMenuItem = new MenuItem(Locale.LS("View in New Undocked Scope"), new MyCommand("elm", "viewInFloatScope")));
-        sim.getMenuUiState().elmMenuBar.addItem(sim.elmAddScopeMenuItem = new MenuItem(Locale.LS("Add to Existing Scope"), new MyCommand("elm", "addToScope0")));
+        sim.getMenuUiState().elmMenuBar.addItem(sim.elmEditMenuItem = new MenuItem(Locale.LS("Edit..."), new MyCommand("elm", "edit")));
         sim.getMenuUiState().elmMenuBar.addItem(sim.elmCutMenuItem = new MenuItem(Locale.LS("Cut"), new MyCommand("elm", "cut")));
         sim.getMenuUiState().elmMenuBar.addItem(sim.elmCopyMenuItem = new MenuItem(Locale.LS("Copy"), new MyCommand("elm", "copy")));
         sim.getMenuUiState().elmMenuBar.addItem(sim.elmDeleteMenuItem = new MenuItem(Locale.LS("Delete"), new MyCommand("elm", "delete")));

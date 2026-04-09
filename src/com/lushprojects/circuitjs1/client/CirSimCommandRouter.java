@@ -270,6 +270,27 @@ final class CirSimCommandRouter {
         }
 
         if (item=="viewInScope" && sim.getMenuUiState().menuElm != null) {
+            if (sim.getMenuUiState().menuElm instanceof EquationTableElm) {
+                EquationTableElm table = (EquationTableElm) sim.getMenuUiState().menuElm;
+                if (table.hasMenuScopeRow()) {
+                    int scopePlotValue = table.getScopePlotValueForRow(table.getMenuScopeRow());
+                    int i;
+                    for (i = 0; i != sim.scopeCount; i++)
+                        if (sim.scopes[i].getElm() == null)
+                            break;
+                    if (i == sim.scopeCount) {
+                        if (sim.scopeCount == sim.scopes.length)
+                            return;
+                        sim.scopeCount++;
+                        sim.scopes[i] = new Scope(sim);
+                        sim.scopes[i].setStackPosition(i);
+                    }
+                    sim.scopes[i].setElmValue(table, scopePlotValue);
+                    if (i > 0)
+                        sim.scopes[i].setSpeed(sim.scopes[i-1].getCurrentSpeed());
+                    return;
+                }
+            }
             int i;
             for (i = 0; i != sim.scopeCount; i++)
                 if (sim.scopes[i].getElm() == null)
@@ -287,6 +308,17 @@ final class CirSimCommandRouter {
         }
 
         if (item=="viewInFloatScope" && sim.getMenuUiState().menuElm != null) {
+            if (sim.getMenuUiState().menuElm instanceof EquationTableElm) {
+                EquationTableElm table = (EquationTableElm) sim.getMenuUiState().menuElm;
+                if (table.hasMenuScopeRow()) {
+                    ScopeElm newScope = new ScopeElm(sim.snapGrid(table.x+50), sim.snapGrid(table.y+50));
+                    sim.addElement(newScope);
+                    newScope.elmScope.setElmValueForEmbedded(table, table.getScopePlotValueForRow(table.getMenuScopeRow()));
+                    newScope.elmScope.resetGraphForEmbedded();
+                    sim.needAnalyze();
+                    return;
+                }
+            }
             ScopeElm newScope = new ScopeElm(sim.snapGrid(sim.getMenuUiState().menuElm.x+50), sim.snapGrid(sim.getMenuUiState().menuElm.y+50));
             sim.addElement(newScope);
             newScope.setScopeElm(sim.getMenuUiState().menuElm);
@@ -297,6 +329,18 @@ final class CirSimCommandRouter {
             int n;
             n = Integer.parseInt(item.substring(10));
             if (n < sim.scopeCount + sim.getScopeManager().countScopeElms()) {
+                if (sim.getMenuUiState().menuElm instanceof EquationTableElm) {
+                    EquationTableElm table = (EquationTableElm) sim.getMenuUiState().menuElm;
+                    if (table.hasMenuScopeRow()) {
+                        int scopePlotValue = table.getScopePlotValueForRow(table.getMenuScopeRow());
+                        if (n < sim.scopeCount )
+                            sim.scopes[n].addElmValue(table, scopePlotValue);
+                        else
+                            sim.getScopeManager().getNthScopeElm(n-sim.scopeCount).elmScope.addElmValue(table, scopePlotValue);
+                        sim.getScopeManager().setScopeMenuSelected(-1);
+                        return;
+                    }
+                }
                 if (n < sim.scopeCount )
                     sim.scopes[n].addElm(sim.getMenuUiState().menuElm);
                 else
