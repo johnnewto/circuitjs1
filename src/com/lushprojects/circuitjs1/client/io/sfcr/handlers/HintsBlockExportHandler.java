@@ -42,12 +42,15 @@ public class HintsBlockExportHandler implements SFCRBlockExportHandler {
             if (name == null || name.trim().isEmpty()) {
                 continue;
             }
-            if (namesCoveredByEquationBlocks.contains(name.trim())) {
+            String trimmedName = name.trim();
+            String normalizedName = HintRegistry.normalizeName(trimmedName);
+            if (namesCoveredByEquationBlocks.contains(trimmedName)
+                    || (!normalizedName.isEmpty() && namesCoveredByEquationBlocks.contains(normalizedName))) {
                 continue;
             }
             String hint = HintRegistry.getHint(name);
             if (hint != null && !hint.trim().isEmpty()) {
-                sb.append("  ").append(name.trim()).append(": ").append(hint).append("\n");
+                sb.append("  ").append(trimmedName).append(": ").append(hint).append("\n");
                 exportedCount++;
             }
         }
@@ -77,7 +80,7 @@ public class HintsBlockExportHandler implements SFCRBlockExportHandler {
                 if (trimmed.isEmpty() || EquationTableElm.isCommentRowName(trimmed)) {
                     continue;
                 }
-                covered.add(trimmed);
+                addCoveredName(covered, trimmed);
             }
         }
 
@@ -97,11 +100,26 @@ public class HintsBlockExportHandler implements SFCRBlockExportHandler {
                 }
                 String trimmed = stockName.trim();
                 if (!trimmed.isEmpty()) {
-                    covered.add(trimmed);
+                    addCoveredName(covered, trimmed);
                 }
             }
         }
 
         return covered;
+    }
+
+    private void addCoveredName(Set<String> covered, String name) {
+        if (name == null) {
+            return;
+        }
+        String trimmed = name.trim();
+        if (trimmed.isEmpty()) {
+            return;
+        }
+        covered.add(trimmed);
+        String normalized = HintRegistry.normalizeName(trimmed);
+        if (!normalized.isEmpty()) {
+            covered.add(normalized);
+        }
     }
 }

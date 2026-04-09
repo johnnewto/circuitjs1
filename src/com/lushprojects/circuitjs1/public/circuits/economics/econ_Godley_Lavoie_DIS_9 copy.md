@@ -1,37 +1,36 @@
 ```{r}
 dis_eqs <- sfcr_set(
   # [ x=128 y=56 uid=yzYTYM invisible=false ]
-  # Consumption expectations and demand
-  ydhs_E ~ epsilon * last(ydhs) + (1 - epsilon) * last(ydhs_E),  # Expected Haig-Simons real disposable income  [mode=param ]
-  c ~ alpha0 + \alpha_1 * ydhs_E + \alpha_2 * last(mh),  # Real consumption  [mode=param ]
-  s ~ c,  # Real sales  [mode=param ]
-  s_E ~ beta * last(s) + (1 - beta) * last(s_E),  # Expected real sales  [mode=param ]
-  # Production and inventories
+  # The production decision
+  y ~ s_E + inv_E - last(inv),  # Real output  [mode=param ]
   inv_T ~ sigma_T * s_E,  # Target real inventories  [mode=param ]
   inv_E ~ last(inv) + gamma * (inv_T - last(inv)),  # Expected real inventories  [mode=param ]
-  y ~ s_E + inv_E - last(inv),  # Real output  [mode=param ]
   inv ~ last(inv) + (y - s),  # Real inventories  [mode=param ]
+  s_E ~ beta * last(s) + (1 - beta) * last(s_E),  # Expected real sales  [mode=param ]
+  s ~ c,  # Real sales  [mode=param ]
   N ~ y / pr,  # Employment level  [mode=param ]
   WB ~ N * W,  # Wage bill  [mode=param ]
   UC ~ WB / y,  # Unit cost  [mode=param ]
   INV ~ inv * UC,  # Inventories at current cost  [mode=param ]
-  # Pricing and firm finance
-  NHUC ~ (1 - sigma_T) * UC + sigma_T * (1 + last(rl)) * last(UC),  # Normal historic unit cost  [mode=param ]
-  p ~ (1 + phi) * NHUC,  # Price level  [mode=param ]
-  C ~ c * p,  # Consumption at current prices  [mode=param ]
+  # The pricing decision
   S ~ p * s,  # Sales at current prices  [mode=param ]
+  p ~ (1 + phi) * NHUC,  # Price level  [mode=param ]
+  NHUC ~ (1 - sigma_T) * UC + sigma_T * (1 + last(rl)) * last(UC),  # Normal historic unit cost  [mode=param ]
   EF ~ S - WB + (INV - last(INV)) - last(rl) * last(INV),  # Realized firm profits  [mode=param ]
-  # Banking system
+  # The banking system
   Ld ~ INV,  # Demand for loans  [mode=param ]
   Ls ~ Ld,  # Supply of loans  [mode=param ]
   Ms ~ Ls,  # Supply of deposits  [mode=param ]
   rm ~ rl - add,  # Interest rate on deposits  [mode=param ]
   EFb ~ last(rl) * last(Ls) - last(rm) * last(Mh),  # Realized bank profits  [mode=param ]
-  # Household income and wealth
+  # The consumption decision
   YD ~ WB + EF + EFb + last(rm) * last(Mh),  # Disposable income  [mode=param ]
   Mh ~ last(Mh) + YD - C,  # Deposits held by households  [mode=param ]
+  ydhs ~ c + (mh - last(mh)),  # Haig-Simons measure of real disposable income  [mode=param ]
+  C ~ c * p,  # Consumption at current prices  [mode=param ]
   mh ~ Mh / p,  # Real value of household deposits  [mode=param ]
-  ydhs ~ c + (mh - last(mh))  # Haig-Simons measure of real disposable income  [mode=param ]
+  c ~ alpha0 + \alpha_1 * ydhs_E + \alpha_2 * last(mh),  # Real consumption  [mode=param ]
+  ydhs_E ~ epsilon * last(ydhs) + (1 - epsilon) * last(ydhs_E)  # Expected Haig-Simons real disposable income  [mode=param ]
 )
 ```
 

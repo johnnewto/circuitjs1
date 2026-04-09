@@ -102,6 +102,18 @@ public class HintRegistry {
     public static Set<String> getAllNames() {
         return new java.util.HashSet<String>(hints.keySet());
     }
+
+    /**
+     * Normalize a hint name using the same rules as registry lookup.
+     * Returns an empty string when the input has no usable normalized form.
+     */
+    public static String normalizeName(String name) {
+        if (name == null) {
+            return "";
+        }
+        String normalized = normalizeHintKey(name.trim());
+        return (normalized != null) ? normalized : "";
+    }
     
     /**
      * Get number of hints stored
