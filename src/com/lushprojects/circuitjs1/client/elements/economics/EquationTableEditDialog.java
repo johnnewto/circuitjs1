@@ -109,6 +109,8 @@ public class EquationTableEditDialog extends Dialog {
     private Button applyButton;
     private Label statusLabel;
     private TextBox tableNameBox;
+    private TextBox nominalColorBox;
+    private TextBox realColorBox;
     
     // Data storage (copied from element for editing)
     private int rowCount;
@@ -119,6 +121,8 @@ public class EquationTableEditDialog extends Dialog {
     private double[] shuntResistances;
     private boolean[] useBackwardEuler;
     private String[] hints;
+    private String nominalVariableColorHex;
+    private String realVariableColorHex;
     
     // Track changes
     private boolean hasChanges = false;
@@ -160,6 +164,8 @@ public class EquationTableEditDialog extends Dialog {
         shuntResistances = new double[MAX_ROWS];
         useBackwardEuler = new boolean[MAX_ROWS];
         hints = new String[MAX_ROWS];
+        nominalVariableColorHex = tableElement.getNominalVariableColorHex();
+        realVariableColorHex = tableElement.getRealVariableColorHex();
         
         for (int i = 0; i < MAX_ROWS; i++) {
             outputNames[i] = tableElement.getUIDisplayOutputName(i);
@@ -226,6 +232,38 @@ public class EquationTableEditDialog extends Dialog {
         rowCountLabel.getElement().getStyle().setProperty("borderRadius", "999px");
         rowCountLabel.getElement().getStyle().setProperty("color", "#374151");
         titlePanel.add(rowCountLabel);
+
+        Label nominalColorLabel = new Label("Nominal:");
+        nominalColorLabel.getElement().getStyle().setProperty("marginLeft", "10px");
+        nominalColorLabel.setTitle("Uppercase nominal / money variable color (#RRGGBB)");
+        titlePanel.add(nominalColorLabel);
+
+        nominalColorBox = new TextBox();
+        nominalColorBox.setWidth("84px");
+        nominalColorBox.setText(nominalVariableColorHex);
+        nominalColorBox.setTitle("Uppercase nominal / money variable color (#RRGGBB)");
+        nominalColorBox.addKeyUpHandler(new KeyUpHandler() {
+            public void onKeyUp(KeyUpEvent event) {
+                markChanged();
+            }
+        });
+        titlePanel.add(nominalColorBox);
+
+        Label realColorLabel = new Label("Real:");
+        realColorLabel.getElement().getStyle().setProperty("marginLeft", "6px");
+        realColorLabel.setTitle("Lowercase real variable color (#RRGGBB)");
+        titlePanel.add(realColorLabel);
+
+        realColorBox = new TextBox();
+        realColorBox.setWidth("84px");
+        realColorBox.setText(realVariableColorHex);
+        realColorBox.setTitle("Lowercase real variable color (#RRGGBB)");
+        realColorBox.addKeyUpHandler(new KeyUpHandler() {
+            public void onKeyUp(KeyUpEvent event) {
+                markChanged();
+            }
+        });
+        titlePanel.add(realColorBox);
 
         mainPanel.add(titlePanel);
         
@@ -1481,6 +1519,20 @@ public class EquationTableEditDialog extends Dialog {
      * Apply changes to the element
      */
     private void applyChanges() {
+        String nominalColor = nominalColorBox.getText() == null ? "" : nominalColorBox.getText().trim();
+        String realColor = realColorBox.getText() == null ? "" : realColorBox.getText().trim();
+        if (!EquationTableVariableColoring.isValidColorHex(nominalColor)) {
+            setStatus("Nominal color must use #RRGGBB");
+            return;
+        }
+        if (!EquationTableVariableColoring.isValidColorHex(realColor)) {
+            setStatus("Real color must use #RRGGBB");
+            return;
+        }
+
+        tableElement.setNominalVariableColorHex(nominalColor);
+        tableElement.setRealVariableColorHex(realColor);
+
         // Apply table name
         tableElement.setTableName(tableNameBox.getText());
         

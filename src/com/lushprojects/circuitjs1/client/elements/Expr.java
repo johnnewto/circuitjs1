@@ -434,6 +434,18 @@ public class Expr {
 	collectAllRefsInternal(out);
 	}
 
+	/**
+	 * Collect node references that appear inside a {@code last(...)} subtree.
+	 *
+	 * This is used by graph visualizers to distinguish explicit previous-period
+	 * dependencies from same-period algebraic links.
+	 *
+	 * @param out target set to populate with referenced names used under last()
+	 */
+	public void collectLastRefs(java.util.Set<String> out) {
+	collectLastRefsInternal(out, false);
+	}
+
     private void collectSamePeriodRefsInternal(java.util.Set<String> out, boolean inHistoricalContext) {
 	if (out == null)
 	    return;
@@ -481,6 +493,25 @@ public class Expr {
 	for (int i = 0; i < children.size(); i++)
 	    children.get(i).collectAllRefsInternal(out);
     }
+
+	private void collectLastRefsInternal(java.util.Set<String> out, boolean inLastContext) {
+	if (out == null)
+	    return;
+
+	boolean childLastContext = inLastContext || type == E_LAST;
+
+	if (inLastContext && (type == E_NODE_REF || type == E_GSLOT) && nodeName != null) {
+	    String trimmed = nodeName.trim();
+	    if (!trimmed.isEmpty())
+		out.add(trimmed);
+	}
+
+	if (children == null)
+	    return;
+
+	for (int i = 0; i < children.size(); i++)
+	    children.get(i).collectLastRefsInternal(out, childLastContext);
+	}
     
     /**
      * Check if this expression is a linear combination of node references and constants.

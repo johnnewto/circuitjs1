@@ -774,10 +774,6 @@ class EquationTableRenderer {
             iconX += classIconWidth;
         }
         
-        // Draw row text
-        g.setColor(getTextColor());
-        g.drawString(rowText, textX, rowY + rowHeight - cellPadding - 2);
-        
         // Draw current value on right side with voltage coloring
         double outputValue = table.getDisplayValue(row);
         String valueText = CircuitElm.getShortUnitText(outputValue, "");
@@ -788,6 +784,17 @@ class EquationTableRenderer {
             valueText += " V";
         }
         int valueWidth = (int) g.context.measureText(valueText).getWidth();
+
+        int initWidth = getInitialIndicatorWidth(g, row);
+        int textRightX = tableX + tableWidth - table.getContentRightInset() - valueWidth - initWidth - table.getCellPadding() - 2;
+        int textClipWidth = Math.max(0, textRightX - textX);
+        if (textClipWidth > 0) {
+            g.save();
+            g.clipRect(textX - 1, rowY + 1, textClipWidth + 2, rowHeight - 2);
+            drawVariableColoredText(g, rowText, textX, rowY + rowHeight - cellPadding - 2);
+            g.restore();
+        }
+
         g.setColor(getVoltageColor(outputValue));
         g.drawString(valueText, tableX + tableWidth - valueWidth - table.getContentRightInset(), rowY + rowHeight - cellPadding - 2);
         
@@ -896,6 +903,87 @@ class EquationTableRenderer {
         cachedRawOutputNameByRow[row] = rawOutputName;
         cachedOutputNameByRow[row] = converted;
         return converted;
+    }
+
+    private void drawVariableColoredText(Graphics g, String text, int startX, int baselineY) {
+        double drawX = startX;
+        int i = 0;
+        while (i < text.length()) {
+            int segmentStart = i;
+            Color segmentColor = getTextColor();
+
+            if (text.charAt(i) == '\\' && i + 1 < text.length() && isIdentifierStartChar(text.charAt(i + 1))) {
+                i += 2;
+                while (i < text.length() && isIdentifierPartChar(text.charAt(i))) {
+                    i++;
+                }
+                String token = text.substring(segmentStart, i);
+                segmentColor = getVariableColor(token, isFunctionLike(text, i));
+            } else if (isIdentifierStartChar(text.charAt(i))) {
+                i++;
+                while (i < text.length() && isIdentifierPartChar(text.charAt(i))) {
+                    i++;
+                }
+                String token = text.substring(segmentStart, i);
+                segmentColor = getVariableColor(token, isFunctionLike(text, i));
+            } else {
+                i++;
+                while (i < text.length()) {
+                    if (text.charAt(i) == '\\' && i + 1 < text.length() && isIdentifierStartChar(text.charAt(i + 1))) {
+                        break;
+                    }
+                    if (isIdentifierStartChar(text.charAt(i))) {
+                        break;
+                    }
+                    i++;
+                }
+            }
+
+            String segment = text.substring(segmentStart, i);
+            g.setColor(segmentColor);
+            g.drawString(segment, (int) Math.round(drawX), baselineY);
+            drawX += g.measureWidth(segment);
+        }
+    }
+
+    private Color getVariableColor(String token, boolean functionLike) {
+        EquationTableVariableColoring.VariableKind kind = EquationTableVariableColoring.classifyToken(token, functionLike);
+        if (kind == EquationTableVariableColoring.VariableKind.NOMINAL) {
+            return table.getNominalVariableColor();
+        }
+        if (kind == EquationTableVariableColoring.VariableKind.REAL) {
+            return table.getRealVariableColor();
+        }
+        return getTextColor();
+    }
+
+    private boolean isFunctionLike(String text, int index) {
+        int next = index;
+        while (next < text.length() && Character.isWhitespace(text.charAt(next))) {
+            next++;
+        }
+        return next < text.length() && text.charAt(next) == '(';
+    }
+
+    private boolean isIdentifierStartChar(char c) {
+        return Character.isLetter(c) || c == '_' || c == '$';
+    }
+
+    private boolean isIdentifierPartChar(char c) {
+        return Character.isLetterOrDigit(c) || c == '_' || c == '.' || c == '$';
+    }
+
+    private int getInitialIndicatorWidth(Graphics g, int row) {
+        String initEq = table.getInitialEquation(row);
+        if (initEq == null || initEq.trim().isEmpty()) {
+            return 0;
+        }
+        Font originalFont = valueFont;
+        Font smallFont = new Font("SansSerif", 0, table.getOpsize() == 2 ? 8 : 7);
+        g.setFont(smallFont);
+        int width = (int) Math.ceil(g.measureWidth("[" + initEq + "]")) + table.getCellPadding();
+        g.setFont(originalFont);
+        return width;
     }
     
     /**

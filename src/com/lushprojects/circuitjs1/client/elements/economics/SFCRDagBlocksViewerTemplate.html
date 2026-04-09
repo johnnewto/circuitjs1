@@ -11,6 +11,10 @@ button{padding:6px 10px;border:1px solid #ccc;background:#f8f8f8;cursor:pointer;
 button.active{background:#e8f0fe;border-color:#9bb6f0;}
 #status{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 8px 0;}
 .badge{display:inline-block;padding:2px 8px;border:1px solid #ccc;border-radius:999px;background:#fafafa;font-size:12px;color:#333;}
+#mainLoopNote{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 8px 0;padding:8px 10px;border:1px solid #e0d3a0;border-radius:8px;background:#fff8dc;color:#5e4610;font-size:13px;}
+.loopTitle{font-weight:700;}
+.loopVar{display:inline-flex;align-items:center;justify-content:center;min-width:28px;padding:3px 8px;border:2px solid #c17900;border-radius:999px;background:#fff;font-weight:700;color:#7a4a00;}
+.loopArrow{font-weight:700;color:#9b6b11;}
 #legend{border:1px solid #ddd;border-radius:6px;padding:8px;background:#fafafa;margin:0 0 8px 0;}
 #legend.hidden{display:none;}
 .legendRow{display:flex;align-items:center;gap:8px;margin:4px 0;font-size:12px;}
@@ -37,6 +41,7 @@ button.active{background:#e8f0fe;border-color:#9bb6f0;}
 <span id='filterBadge' class='badge'></span>
 <span class='badge'>Tip: click node to highlight neighborhood</span>
 </div>
+<div id='mainLoopNote'></div>
 <div id='nodeHoverTip'></div>
 <div id='legend'></div>
 <div id='dagPlot'></div>
@@ -101,11 +106,161 @@ function formatMathLabel(text){
   return out;
 }
 function compactLabel(s){if(!s) return ''; return s.length>22 ? s.substring(0,21)+'…' : s;}
-function toElements(g){
+function circularDistance(a,b,size){const d=Math.abs(a-b);return Math.min(d,size-d);}
+function buildLoopGraphInfo(g){
+  const info={outEdges:[],inDegree:new Array(g.nodes.length),outDegree:new Array(g.nodes.length),historicalIncident:new Array(g.nodes.length),lastIncident:new Array(g.nodes.length)};
+  for(let i=0;i<g.nodes.length;i++){
+    info.outEdges.push([]);
+    info.inDegree[i]=0;
+    info.outDegree[i]=0;
+    info.historicalIncident[i]=false;
+    info.lastIncident[i]=false;
+  }
+  for(let i=0;i<g.edges.length;i++){
+    const e=g.edges[i];
+    const edge={from:e.from,to:e.to,historical:!!e.historical,lastDependency:!!e.lastDependency};
+    if(edge.from < 0 || edge.from >= g.nodes.length || edge.to < 0 || edge.to >= g.nodes.length) continue;
+    info.outEdges[edge.from].push(edge);
+    info.outDegree[edge.from]++;
+    info.inDegree[edge.to]++;
+    if(edge.historical){ info.historicalIncident[edge.from]=true; info.historicalIncident[edge.to]=true; }
+    if(edge.lastDependency){ info.lastIncident[edge.from]=true; info.lastIncident[edge.to]=true; }
+  }
+  info.nodeScore = new Array(g.nodes.length);
+  for(let i=0;i<g.nodes.length;i++){
+    const n=g.nodes[i];
+    info.nodeScore[i]=info.inDegree[i]+info.outDegree[i]+(info.lastIncident[i]?5:0)+(info.historicalIncident[i]?2:0)+(n && !n.stock ? 2 : -2);
+  }
+  return info;
+}
+function scoreLoop(g, info, loopNodes, loopEdges){
+  const histCount=loopEdges.filter(function(e){ return e.historical; }).length;
+  const lastCount=loopEdges.filter(function(e){ return e.lastDependency; }).length;
+  const nonStockCount=loopNodes.filter(function(idx){ return !g.nodes[idx].stock; }).length;
+  const uniqueBlocks=new Set(loopNodes.map(function(idx){ return g.nodes[idx].block; })).size;
+  let degreeSum=0;
+  for(let i=0;i<loopNodes.length;i++) degreeSum += info.nodeScore[loopNodes[i]];
+  let boundaryCount=0;
+  for(let i=0;i<loopNodes.length;i++){
+    const prev=loopNodes[(i-1+loopNodes.length)%loopNodes.length];
+    const cur=loopNodes[i];
+    const next=loopNodes[(i+1)%loopNodes.length];
+    if(g.nodes[cur].block !== g.nodes[prev].block || g.nodes[cur].block !== g.nodes[next].block) boundaryCount++;
+  }
+  const mixedBonus=(histCount>0 && histCount<loopEdges.length)?18:0;
+  const targetLenPenalty=Math.abs(loopNodes.length-6)*2;
+  return lastCount*60 + histCount*18 + mixedBonus + uniqueBlocks*8 + boundaryCount*5 + nonStockCount*3 + degreeSum - targetLenPenalty;
+}
+function findMainLoopInGraph(g){
+  if(!g || !g.nodes || !g.edges || !g.nodes.length || !g.edges.length) return null;
+  const info=buildLoopGraphInfo(g);
+  const starts=[];
+  for(let i=0;i<g.nodes.length;i++) starts.push(i);
+  starts.sort(function(a,b){ return info.nodeScore[b]-info.nodeScore[a]; });
+  const maxStarts=Math.min(starts.length, 18);
+  const maxDepth=Math.min(24, Math.max(8, Math.floor(g.nodes.length/2)));
+  let best=null;
+  let expansions=0;
+  function consider(loopNodes, loopEdges){
+    const score=scoreLoop(g, info, loopNodes, loopEdges);
+    if(!best || score > best.score || (score === best.score && loopNodes.length < best.nodes.length)){
+      best={nodes:loopNodes.slice(),edges:loopEdges.slice(),score:score,info:info};
+    }
+  }
+  function dfs(start,current,pathNodes,pathEdges,visited){
+    if(expansions > 12000 || pathNodes.length > maxDepth) return;
+    expansions++;
+    const outs=info.outEdges[current].slice();
+    outs.sort(function(a,b){
+      const pa=(a.lastDependency?30:0)+(a.historical?10:0)+info.nodeScore[a.to];
+      const pb=(b.lastDependency?30:0)+(b.historical?10:0)+info.nodeScore[b.to];
+      return pb-pa;
+    });
+    for(let i=0;i<outs.length;i++){
+      const edge=outs[i];
+      if(edge.to === start && pathNodes.length >= 2){
+        consider(pathNodes, pathEdges.concat([edge]));
+        continue;
+      }
+      if(visited[edge.to] || pathNodes.length >= maxDepth) continue;
+      visited[edge.to]=true;
+      pathNodes.push(edge.to);
+      pathEdges.push(edge);
+      dfs(start, edge.to, pathNodes, pathEdges, visited);
+      pathEdges.pop();
+      pathNodes.pop();
+      visited[edge.to]=false;
+    }
+  }
+  for(let s=0;s<maxStarts;s++){
+    const start=starts[s];
+    const visited=new Array(g.nodes.length);
+    for(let i=0;i<visited.length;i++) visited[i]=false;
+    visited[start]=true;
+    dfs(start, start, [start], [], visited);
+    if(expansions > 12000) break;
+  }
+  return best;
+}
+function deriveBridgeNodes(g, loop){
+  if(!loop || !loop.nodes || !loop.nodes.length) return [];
+  const info=loop.info || buildLoopGraphInfo(g);
+  const count=loop.nodes.length;
+  const target=Math.min(6, Math.max(3, Math.round(Math.sqrt(count))));
+  const minGap=Math.max(1, Math.floor(count/Math.max(2,target)) - 1);
+  const candidates=[];
+  for(let pos=0;pos<count;pos++){
+    const idx=loop.nodes[pos];
+    const node=g.nodes[idx];
+    const prev=loop.nodes[(pos-1+count)%count];
+    const next=loop.nodes[(pos+1)%count];
+    const boundary=(g.nodes[idx].block !== g.nodes[prev].block || g.nodes[idx].block !== g.nodes[next].block);
+    const score=info.nodeScore[idx] + (boundary?8:0) + (node && !node.stock ? 6 : -8) + (info.lastIncident[idx]?4:0);
+    candidates.push({pos:pos,idx:idx,score:score});
+  }
+  candidates.sort(function(a,b){ return b.score-a.score; });
+  const picked=[];
+  for(let i=0;i<candidates.length && picked.length<target;i++){
+    const cand=candidates[i];
+    let tooClose=false;
+    for(let j=0;j<picked.length;j++){
+      if(circularDistance(cand.pos,picked[j].pos,count) <= minGap){ tooClose=true; break; }
+    }
+    if(!tooClose) picked.push(cand);
+  }
+  if(picked.length < 2){
+    for(let i=0;i<candidates.length && picked.length<Math.min(target,candidates.length);i++){
+      if(picked.indexOf(candidates[i]) < 0) picked.push(candidates[i]);
+    }
+  }
+  picked.sort(function(a,b){ return a.pos-b.pos; });
+  return picked.map(function(item){ return item.idx; });
+}
+function getLoopMeta(mode){
+  const activeGraph=getActiveDataset(mode);
+  let sourceGraph=activeGraph;
+  let loop=findMainLoopInGraph(activeGraph);
+  if(!loop){
+    const fallbackGraph=getActiveDataset('historical');
+    if(fallbackGraph && fallbackGraph !== activeGraph){
+      const fallbackLoop=findMainLoopInGraph(fallbackGraph);
+      if(fallbackLoop){
+        sourceGraph=fallbackGraph;
+        loop=fallbackLoop;
+      }
+    }
+  }
+  if(!loop) return {graph:activeGraph, sourceGraph:sourceGraph, loop:null, bridgeSet:new Set(), loopNames:[]};
+  const bridgeNodes=deriveBridgeNodes(sourceGraph, loop);
+  const bridgeNames=bridgeNodes.map(function(idx){ return sourceGraph.nodes[idx].name; });
+  return {graph:activeGraph, sourceGraph:sourceGraph, loop:loop, bridgeSet:new Set(bridgeNames), loopNames:bridgeNames};
+}
+function toElements(g, loopMeta){
   const elements=[];
   const useHints = !!(document.getElementById('useHints') && document.getElementById('useHints').checked);
-  for(let i=0;i<g.nodes.length;i++){const n=g.nodes[i];const raw=(useHints && n.hint && String(n.hint).trim().length>0)?n.hint:n.name;const prefix=n.stock?'∫ ':'';const fmt=formatMathLabel(prefix+raw);const hintEq=formatMathLabel(n.hintEq||'');elements.push({data:{id:'n'+i,labelFull:fmt,labelDisplay:compactLabel(fmt),hintEq:hintEq,block:n.block,stock:n.stock?1:0,cyclical:n.cyclical?1:0,color:colorForBlock(n.block)}});}
-  for(let i=0;i<g.edges.length;i++){const e=g.edges[i];const cyc=(g.nodes[e.from]&&g.nodes[e.from].block===g.nodes[e.to].block)?1:0;elements.push({data:{id:'e'+i,source:'n'+e.from,target:'n'+e.to,weight:cyc?1:3}});}
+  const bridgeSet = loopMeta && loopMeta.bridgeSet ? loopMeta.bridgeSet : new Set();
+  for(let i=0;i<g.nodes.length;i++){const n=g.nodes[i];const raw=(useHints && n.hint && String(n.hint).trim().length>0)?n.hint:n.name;const prefix=n.stock?'∫ ':'';const fmt=formatMathLabel(prefix+raw);const hintEq=formatMathLabel(n.hintEq||'');elements.push({data:{id:'n'+i,name:n.name,labelFull:fmt,labelDisplay:compactLabel(fmt),hintEq:hintEq,block:n.block,stock:n.stock?1:0,cyclical:n.cyclical?1:0,bridge:bridgeSet.has(n.name)?1:0,color:colorForBlock(n.block)}});}
+  for(let i=0;i<g.edges.length;i++){const e=g.edges[i];const cyc=(g.nodes[e.from]&&g.nodes[e.from].block===g.nodes[e.to].block)?1:0;elements.push({data:{id:'e'+i,source:'n'+e.from,target:'n'+e.to,weight:cyc?1:3,historical:e.historical?1:0,lastDependency:e.lastDependency?1:0}});}
   return elements;
 }
 function getHoverTipEl(){
@@ -155,8 +310,29 @@ function buildLegend(){
   const legend = document.getElementById('legend');
   let html = '<div style="font-weight:600;margin-bottom:4px;">Legend</div>';
   html += '<div class="legendRow"><span style="display:inline-block;width:14px;text-align:center;color:#1e8c50;font-weight:700;">∫</span><span>Stock row (top-level integrate, highlighted shape + glow)</span></div>';
+  html += '<div class="legendRow"><span style="display:inline-block;width:18px;height:0;border-top:2px dashed #666;"></span><span><code>last(...)</code> dependency</span></div>';
+  html += '<div class="legendRow"><span class="loopVar">Bridge</span><span>Detected bridge variables from the circuit main feedback loop</span></div>';
   html += '<div class="legendRow"><span class="shapeKey" style="border-radius:2px;"></span><span>Cyclical</span><span class="shapeKey" style="border-radius:6px;"></span><span>Non-cyclical</span></div>';
   legend.innerHTML = html;
+}
+function updateMainLoopNote(loopMeta){
+  const el = document.getElementById('mainLoopNote');
+  if(!el) return;
+  const vars = loopMeta && loopMeta.loopNames ? loopMeta.loopNames : [];
+  if(vars.length < 2){
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  const parts = ['<span class="loopTitle">Main loop:</span>'];
+  for(let i=0;i<vars.length;i++){
+    parts.push('<span class="loopVar">' + formatMathLabel(vars[i]) + '</span>');
+    if(i < vars.length - 1) parts.push('<span class="loopArrow">→</span>');
+  }
+  parts.push('<span class="loopArrow">→</span>');
+  parts.push('<span class="loopVar">' + formatMathLabel(vars[0]) + '</span>');
+  el.innerHTML = parts.join('');
+  el.style.display = 'flex';
 }
 function applyLabelMode(){
   if(!cy) return;
@@ -197,10 +373,12 @@ function enableNeighborhoodHighlight(){
 }
 function renderGraph(mode){
   const g=getActiveDataset(mode);
+  const loopMeta=getLoopMeta(mode);
   const title = g.title || 'SFCR DAG Blocks Plot';
   document.title = formatMathLabel(title);
   updateStatusBadges();
   buildLegend();
+  updateMainLoopNote(loopMeta);
   if(typeof cytoscape === 'undefined'){
     document.getElementById('dagPlot').innerHTML='<div style="padding:12px;color:#b00;">Cytoscape failed to load.</div>';
     return;
@@ -209,12 +387,14 @@ function renderGraph(mode){
   hideHoverTip();
   cy = cytoscape({
     container: document.getElementById('dagPlot'),
-    elements: toElements(g),
+    elements: toElements(g, loopMeta),
     style: [
       {selector:'node',style:{'label':'data(labelDisplay)','font-size':10,'text-wrap':'wrap','text-max-width':140,'text-valign':'center','text-halign':'center','width':'label','height':26,'padding-left':8,'padding-right':8,'background-color':'data(color)','border-width':1,'border-color':'#333','shape':'round-rectangle'}},
+      {selector:'node[bridge = 1]',style:{'font-size':14,'font-weight':'bold','border-width':4,'border-color':'#c17900','text-outline-width':1,'text-outline-color':'#fff7df','shadow-blur':18,'shadow-opacity':0.3,'shadow-color':'#f0c15a','shadow-offset-x':0,'shadow-offset-y':0}},
       {selector:'node[stock = 1]',style:{'shape':'hexagon','border-style':'solid','border-width':3,'border-color':'#1e8c50','shadow-blur':14,'shadow-opacity':0.55,'shadow-color':'#1e8c50','shadow-offset-x':0,'shadow-offset-y':0}},
       {selector:'node[cyclical = 1]',style:{'shape':'rectangle','border-width':2}},
       {selector:'edge',style:{'curve-style':'bezier','width':1.2,'line-color':'#999','target-arrow-color':'#999','target-arrow-shape':'triangle','arrow-scale':0.9,'opacity':0.65}},
+      {selector:'edge[lastDependency = 1]',style:{'line-style':'dashed','line-dash-pattern':[8,4],'line-color':'#666','target-arrow-color':'#666','opacity':0.9,'width':1.6}},
       {selector:'.faded',style:{'opacity':0.14}},
       {selector:':selected',style:{'overlay-opacity':0,'border-color':'#111','line-color':'#555','target-arrow-color':'#555'}}
     ],

@@ -81,6 +81,15 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     /** Default base convergence tolerance for equation convergence checks. */
     private static final double DEFAULT_CONVERGENCE_TOLERANCE = 0.001;
 
+    /** Serialization marker for table-level rendering settings. */
+    private static final String SERIALIZATION_VERSION_TOKEN = "__etv2__";
+
+    /** Default color for uppercase nominal/money variables in rendered equations. */
+    private static final Color DEFAULT_NOMINAL_VARIABLE_COLOR = new Color("#4a8cff");
+
+    /** Default color for lowercase real variables in rendered equations. */
+    private static final Color DEFAULT_REAL_VARIABLE_COLOR = new Color("#2fb35f");
+
     /** Maximum rows shown on-canvas before vertical scrolling is enabled. */
     private static final int MAX_VISIBLE_ROWS_NORMAL = 12;
 
@@ -496,6 +505,12 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     /** Renderer for drawing the table */
     private EquationTableRenderer renderer;
+
+    /** Per-table render color for uppercase nominal/money variables. */
+    private Color nominalVariableColor = DEFAULT_NOMINAL_VARIABLE_COLOR;
+
+    /** Per-table render color for lowercase real variables. */
+    private Color realVariableColor = DEFAULT_REAL_VARIABLE_COLOR;
     
     //=============================================================================
     // CONSTRUCTORS
@@ -572,7 +587,12 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
 
         int tokenStartIndex = 0;
-        int remainingTokenCount = tokenCount;
+        if (tokenCount >= 3 && SERIALIZATION_VERSION_TOKEN.equals(tokens.get(0))) {
+            nominalVariableColor = EquationTableVariableColoring.parseColorOrDefault(tokens.get(1), DEFAULT_NOMINAL_VARIABLE_COLOR);
+            realVariableColor = EquationTableVariableColoring.parseColorOrDefault(tokens.get(2), DEFAULT_REAL_VARIABLE_COLOR);
+            tokenStartIndex = 3;
+        }
+        int remainingTokenCount = tokenCount - tokenStartIndex;
         int tokensPerRow = (rowCount > 0) ? (remainingTokenCount / rowCount) : 0;
         boolean exactRows = rowCount > 0 && (remainingTokenCount == rowCount * tokensPerRow);
 
@@ -2185,6 +2205,9 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         sb.append(super.dump());
         sb.append(" ").append(CustomLogicModel.escape(tableName));
         sb.append(" ").append(rowCount);
+        sb.append(" ").append(SERIALIZATION_VERSION_TOKEN);
+        sb.append(" ").append(nominalVariableColor.getHexValue());
+        sb.append(" ").append(realVariableColor.getHexValue());
         
         // Serialize each row's data
         for (int row = 0; row < rowCount; row++) {
@@ -2531,6 +2554,34 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     
     /** Set the table name */
     public void setTableName(String name) { tableName = name; }
+
+    /** Get render color for uppercase nominal/money variables. */
+    public Color getNominalVariableColor() { return nominalVariableColor; }
+
+    /** Get render color for lowercase real variables. */
+    public Color getRealVariableColor() { return realVariableColor; }
+
+    /** Get nominal variable render color in persisted hex form. */
+    public String getNominalVariableColorHex() { return nominalVariableColor.getHexValue(); }
+
+    /** Get real variable render color in persisted hex form. */
+    public String getRealVariableColorHex() { return realVariableColor.getHexValue(); }
+
+    /** Set nominal variable render color from a #RRGGBB string. */
+    public void setNominalVariableColorHex(String colorText) {
+        nominalVariableColor = EquationTableVariableColoring.parseColorOrDefault(colorText, DEFAULT_NOMINAL_VARIABLE_COLOR);
+        if (renderer != null) {
+            renderer.invalidateContentCache();
+        }
+    }
+
+    /** Set real variable render color from a #RRGGBB string. */
+    public void setRealVariableColorHex(String colorText) {
+        realVariableColor = EquationTableVariableColoring.parseColorOrDefault(colorText, DEFAULT_REAL_VARIABLE_COLOR);
+        if (renderer != null) {
+            renderer.invalidateContentCache();
+        }
+    }
 
     /** Get global base convergence tolerance used by equation tables. */
     private double getConvergenceTolerance() {

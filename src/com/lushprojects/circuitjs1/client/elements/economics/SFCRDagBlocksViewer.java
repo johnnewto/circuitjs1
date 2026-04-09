@@ -2,7 +2,6 @@ package com.lushprojects.circuitjs1.client.elements.economics;
 
 import com.lushprojects.circuitjs1.client.elements.Expr;
 import com.lushprojects.circuitjs1.client.elements.ExprParser;
-import com.lushprojects.circuitjs1.client.elements.ExprState;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -12,7 +11,6 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.registry.HintRegistry;
-import com.lushprojects.circuitjs1.client.util.*;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.resources.client.ClientBundle;
 import com.google.gwt.resources.client.TextResource;
@@ -91,10 +89,14 @@ public class SFCRDagBlocksViewer {
     private static class EdgeDef {
         int from;
         int to;
+        boolean historical;
+        boolean lastDependency;
 
-        EdgeDef(int from, int to) {
+        EdgeDef(int from, int to, boolean historical, boolean lastDependency) {
             this.from = from;
             this.to = to;
+            this.historical = historical;
+            this.lastDependency = lastDependency;
         }
     }
 
@@ -273,24 +275,38 @@ public class SFCRDagBlocksViewer {
         HashSet<String> edgeSet = new HashSet<String>();
         for (int i = 0; i < equations.size(); i++) {
             EquationDef eq = equations.get(i);
-            LinkedHashSet<String> refs = parseReferences(eq.equation, includeHistoricalRefs);
-            for (String refName : refs) {
-                Integer fromIdxObj = nodeIndexByName.get(refName);
-                if (fromIdxObj == null) {
-                    continue;
+            ReferenceSets refs = parseReferences(eq.equation);
+            for (String refName : refs.samePeriodRefs) {
+                addEdge(graph, edgeSet, nodeIndexByName, refName, i, false, false);
+            }
+            if (includeHistoricalRefs) {
+                for (String refName : refs.otherHistoricalRefs) {
+                    addEdge(graph, edgeSet, nodeIndexByName, refName, i, true, false);
                 }
-                int fromIdx = fromIdxObj.intValue();
-                int toIdx = i;
-                String edgeKey = fromIdx + ">" + toIdx;
-                if (!edgeSet.contains(edgeKey)) {
-                    edgeSet.add(edgeKey);
-                    graph.edges.add(new EdgeDef(fromIdx, toIdx));
+                for (String refName : refs.lastRefs) {
+                    addEdge(graph, edgeSet, nodeIndexByName, refName, i, true, true);
                 }
             }
         }
 
         computeBlocksAndCycles(graph);
         return graph;
+    }
+
+    private void addEdge(GraphData graph, HashSet<String> edgeSet,
+            HashMap<String, Integer> nodeIndexByName, String refName, int toIdx,
+            boolean historical, boolean lastDependency) {
+        Integer fromIdxObj = nodeIndexByName.get(refName);
+        if (fromIdxObj == null) {
+            return;
+        }
+        int fromIdx = fromIdxObj.intValue();
+        String edgeKey = fromIdx + ">" + toIdx + ">" + historical + ">" + lastDependency;
+        if (edgeSet.contains(edgeKey)) {
+            return;
+        }
+        edgeSet.add(edgeKey);
+        graph.edges.add(new EdgeDef(fromIdx, toIdx, historical, lastDependency));
     }
 
     /**
@@ -389,9 +405,15 @@ public class SFCRDagBlocksViewer {
                 || "externals".equals(normalized);
     }
 
-    /** Parse equation expression and collect dependency refs by selected mode. */
-    private LinkedHashSet<String> parseReferences(String equation, boolean includeHistoricalRefs) {
-        LinkedHashSet<String> refs = new LinkedHashSet<String>();
+    private static class ReferenceSets {
+        LinkedHashSet<String> samePeriodRefs = new LinkedHashSet<String>();
+        LinkedHashSet<String> lastRefs = new LinkedHashSet<String>();
+        LinkedHashSet<String> otherHistoricalRefs = new LinkedHashSet<String>();
+    }
+
+    /** Parse equation expression and classify same-period vs explicit last() references. */
+    private ReferenceSets parseReferences(String equation) {
+        ReferenceSets refs = new ReferenceSets();
         if (equation == null || equation.length() == 0) {
             return refs;
         }
@@ -407,10 +429,15 @@ public class SFCRDagBlocksViewer {
             return refs;
         }
 
-        if (includeHistoricalRefs) {
-            expr.collectAllRefs(refs);
-        } else {
-            expr.collectSamePeriodRefs(refs);
+        LinkedHashSet<String> allRefs = new LinkedHashSet<String>();
+        expr.collectSamePeriodRefs(refs.samePeriodRefs);
+        expr.collectLastRefs(refs.lastRefs);
+        expr.collectAllRefs(allRefs);
+
+        for (String ref : allRefs) {
+            if (!refs.samePeriodRefs.contains(ref) && !refs.lastRefs.contains(ref)) {
+                refs.otherHistoricalRefs.add(ref);
+            }
         }
         return refs;
     }
@@ -640,7 +667,9 @@ public class SFCRDagBlocksViewer {
             EdgeDef edge = graph.edges.get(i);
             sb.append("{");
             sb.append("\"from\":").append(edge.from).append(",");
-            sb.append("\"to\":").append(edge.to);
+            sb.append("\"to\":").append(edge.to).append(",");
+            sb.append("\"historical\":").append(edge.historical ? "true" : "false").append(",");
+            sb.append("\"lastDependency\":").append(edge.lastDependency ? "true" : "false");
             sb.append("}");
         }
         sb.append("]}");
