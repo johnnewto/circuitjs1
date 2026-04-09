@@ -3,6 +3,7 @@ package com.lushprojects.circuitjs1.client;
 import com.lushprojects.circuitjs1.client.io.SFCRParseResult;
 import com.lushprojects.circuitjs1.client.io.SFCRParser;
 import com.lushprojects.circuitjs1.client.io.SFCRSyntaxNormalizer;
+import com.lushprojects.circuitjs1.client.io.SFCRUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.ResourceLock;
@@ -111,6 +112,14 @@ class SFCRSyntaxNormalizerTest {
         String normalized = normalizer.normalize(blockStyle);
         
         assertEquals(blockStyle, normalized, "Block-style should pass through unchanged");
+    }
+
+    @Test
+    @DisplayName("preserves d(name) alias instead of expanding or converting to diff()")
+    void testNormalizeDifferenceAlias() {
+        assertEquals("d(INV)", SFCRUtil.normalizeExpression("d(INV)"));
+        assertEquals("x + d(INV)", SFCRUtil.normalizeExpression("x + d(INV)"));
+        assertEquals("diff(t)", SFCRUtil.normalizeExpression("diff(t)"));
     }
 
     @Test

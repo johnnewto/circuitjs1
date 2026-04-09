@@ -283,7 +283,31 @@ final class EquationTableJacobianHelper {
             return false;
         }
         String lower = eq.toLowerCase();
-        return lower.contains("last(") || lower.contains("[-1]") || lower.contains("(-1)");
+        return lower.contains("last(") || lower.contains("[-1]") || lower.contains("(-1)")
+            || containsDifferenceAlias(eq);
+    }
+
+    private static boolean containsDifferenceAlias(String eq) {
+        for (int i = 0; i < eq.length(); i++) {
+            char c = eq.charAt(i);
+            if (c != 'd') {
+                continue;
+            }
+            if (i > 0) {
+                char prev = eq.charAt(i - 1);
+                if (Character.isLetterOrDigit(prev) || prev == '_' || prev == '\\' || prev == '.') {
+                    continue;
+                }
+            }
+            int j = i + 1;
+            while (j < eq.length() && Character.isWhitespace(eq.charAt(j))) {
+                j++;
+            }
+            if (j < eq.length() && eq.charAt(j) == '(') {
+                return true;
+            }
+        }
+        return false;
     }
 
     static String formatAppliedJacobianPrefix(String method, boolean flowMode) {

@@ -329,8 +329,10 @@ public class SFCRUtil {
     /**
      * Normalize an expression coming from SFCR text.
      * Converts Greek symbols (same as {@link #normalizeVariableName}) and maps
-     * alternative calculus notation: {@code d()} → {@code diff()},
-     * {@code ∫()} → {@code integrate()}.
+     * alternative notation while preserving user-facing aliases where possible.
+     * In particular, {@code d(Name)} is preserved as written and interpreted by
+     * the expression parser as a period-to-period difference, while
+     * {@code ∫()} maps to {@code integrate()}.
      */
     public static String normalizeExpression(String expr) {
         return normalizeExpressionInternal(expr, true);
@@ -379,7 +381,6 @@ public class SFCRUtil {
 
         // Calculus notation aliases
         expr = expr.replace("∆(", "diff(");
-        expr = expr.replace("d(", "diff(");
         expr = expr.replace("∫(", "integrate(");
 
         expr = normalizeLaggedReferences(expr);
@@ -480,6 +481,7 @@ public class SFCRUtil {
         }
         return out.toString();
     }
+
 
     private static String normalizeLeadingDecimalLiterals(String expr) {
         String normalized = expr.replaceAll("\\s-\\.([0-9]+)", " - 0.$1");

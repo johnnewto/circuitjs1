@@ -229,6 +229,27 @@ class ExprTest {
     }
 
     @Test
+    @DisplayName("d(name) parses to current minus last(name)")
+    void testDifferenceAliasUsesPreviousConvergedValue() {
+        Expr expr = parse("d(INV)");
+
+        assertEquals(Expr.E_SUB, expr.type);
+        assertNotNull(expr.children);
+        assertEquals(2, expr.children.size());
+
+        Expr current = expr.children.get(0);
+        Expr previous = expr.children.get(1);
+
+        assertEquals(Expr.E_NODE_REF, current.type);
+        assertEquals("INV", current.nodeName);
+        assertEquals(Expr.E_LAST, previous.type);
+        assertNotNull(previous.children);
+        assertEquals(1, previous.children.size());
+        assertEquals(Expr.E_NODE_REF, previous.children.get(0).type);
+        assertEquals("INV", previous.children.get(0).nodeName);
+    }
+
+    @Test
     @DisplayName("last(name) prefers lagged flow value over lagged base value when both exist")
     void testLastPrefersLaggedFlowOverLaggedBaseValue() {
         String flowKey = ComputedValues.getFlowComputedKeyForName("Ld");

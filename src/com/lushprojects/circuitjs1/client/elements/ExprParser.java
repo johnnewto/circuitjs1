@@ -68,6 +68,15 @@ public class ExprParser {
 	getToken();
 	return true;
     }
+
+    private boolean isFunctionCallToken(String name) {
+	if (!token.equals(name))
+	    return false;
+	int i = pos;
+	while (i < tlen && text.charAt(i) == ' ')
+	    i++;
+	return i < tlen && text.charAt(i) == '(';
+    }
     
     // Check if a token looks like a valid identifier (GWT-compatible)
     // Now supports Greek symbols like \beta, \omega and LaTeX scripts like Z_1, x^2
@@ -309,6 +318,19 @@ public class ExprParser {
 	return e;
     }
 
+    private Expr parseDifferenceAlias() {
+	skipOrError("(");
+	Expr arg = parse();
+	skipOrError(")");
+	if (arg == null || arg.type != Expr.E_NODE_REF || arg.nodeName == null) {
+	    setError("d() requires a variable name; use diff(x) for derivatives");
+	    return new Expr(Expr.E_VAL, 0);
+	}
+	Expr current = new Expr(Expr.E_NODE_REF, arg.nodeName);
+	Expr previous = new Expr(new Expr(Expr.E_NODE_REF, arg.nodeName), null, Expr.E_LAST);
+	return new Expr(current, previous, Expr.E_SUB);
+    }
+
     /**
      * Parse postfix lag alias index after a variable name.
      * Accepts token-level forms equivalent to -1, including spaced variants
@@ -440,6 +462,10 @@ public class ExprParser {
 			return parseFunc(Expr.E_CEIL);
 		if (skipIgnoreCase("integrate"))
 			return parseFunc(Expr.E_INTEGRATE);
+		if (isFunctionCallToken("d")) {
+			skip("d");
+			return parseDifferenceAlias();
+		}
 		if (skipIgnoreCase("diff"))
 			return parseFunc(Expr.E_DIFF);
 		if (skipIgnoreCase("last"))

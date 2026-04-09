@@ -206,6 +206,26 @@ class SFCRHandlerDispatchTest {
     }
 
     @Test
+    @DisplayName("R-style d(name) alias is preserved in parsed matrix dump text")
+    void rStyleDifferenceAliasIsPreservedInMatrixDump() {
+        String text =
+                "TFM <- sfcr_matrix(\n" +
+                "  columns = c(\"Households\", \"Firms\"),\n" +
+                "  codes = c(\"h\", \"f\"),\n" +
+                "  c(\"Ch. Inventories\", h = \"d(INV)\", f = \"-d(INV)\")\n" +
+                ")\n";
+
+        SFCRParseResult result = SFCRParser.parseToResult(text);
+        assertNotNull(result);
+        SFCRParseResult.BlockDump block = result.findBlock("matrix", "TFM");
+        assertNotNull(block, "Matrix block should parse");
+        assertTrue(block.dumpString.contains("d(INV)"),
+                "Parsed matrix dump should preserve d(INV) text for display/export");
+        assertTrue(block.dumpString.contains("-d(INV)"),
+                "Parsed matrix dump should preserve signed d(INV) text for display/export");
+    }
+
+    @Test
     @DisplayName("unknown R-style assignment is skipped without parse failure")
     void unknownRStyleAssignmentSkipsWithoutFailure() {
         String text =
