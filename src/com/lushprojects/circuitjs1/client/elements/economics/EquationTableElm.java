@@ -1041,9 +1041,13 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     protected String getScopeText(int value) {
         int row = findScopeRowByPlotValue(value);
         if (row >= 0) {
-            return tableName + ": " + getFlowDisplayName(row);
+            return formatScopeLegendLabel(tableName, getFlowDisplayName(row));
         }
         return super.getScopeText(value);
+    }
+
+    static String formatScopeLegendLabel(String tableName, String rowLabel) {
+        return rowLabel == null ? "" : rowLabel;
     }
 
     @Override

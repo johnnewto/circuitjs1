@@ -288,9 +288,13 @@ public class SequenceDiagramParser {
     }
     
     /**
-     * Extracts source/target sectors from a table row.
-     * Source = column with negative value (outflow)
-     * Target = column with positive value (inflow)
+    * Extracts source/target sectors from a table row.
+    * Source = column with negative value (outflow)
+    * Target = column with positive value (inflow)
+    *
+    * <p>Direction precedence is numeric-first: if both a nonzero numeric source and target are
+    * available, those decide the arrow direction. Equation sign hints are only used as a
+    * fallback when the evaluated row is currently zero or incomplete.
      * 
      * @param table Table to analyze
      * @param row   Row index
@@ -336,6 +340,13 @@ public class SequenceDiagramParser {
                     }
                 }
             }
+        }
+
+        if (numericSource != null && numericTarget != null) {
+            endpoints.sourceSector = numericSource;
+            endpoints.targetSector = numericTarget;
+            endpoints.flowValue = numericMagnitude;
+            return endpoints;
         }
 
         if (equationSource != null && equationTarget != null) {

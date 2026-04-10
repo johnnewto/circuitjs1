@@ -108,6 +108,43 @@ class SequenceDiagramSourceTableBindingTest extends CircuitJavaSimTestBase {
     }
 
     @Test
+    @DisplayName("source-bound diagram prefers numeric sign over equation sign when direction conflicts")
+    void sourceBoundDiagramPrefersNumericDirectionOverEquationHints() throws Exception {
+        Path fixturePath = Paths.get(System.getProperty("projectDir"), "test/resources/sfcr_debug_reference.md");
+        String fixture = Files.readString(fixturePath, StandardCharsets.UTF_8);
+        String circuitText = fixture + "\n```{r}\n"
+            + "@startuml x=96 y=32 scale=0.6\n"
+            + "source: Transaction Flow Matrix\n"
+            + "@end\n"
+            + "```\n";
+
+        loadCircuitText(circuitText);
+
+        SequenceDiagramElm diagram = findFirstSequenceDiagram();
+        assertNotNull(diagram, "Expected a source-bound PlantUML sequence diagram");
+
+        TableElm transactionFlowMatrix = findTable("Transaction Flow Matrix");
+        assertNotNull(transactionFlowMatrix, "Expected Transaction Flow Matrix source table");
+        int wagesRow = findRow(transactionFlowMatrix, "Wages");
+        int householdsCol = findColumn(transactionFlowMatrix, "Households");
+        int productionCol = findColumn(transactionFlowMatrix, "Production");
+        assertTrue(wagesRow >= 0 && householdsCol >= 0 && productionCol >= 0,
+            "Expected Wages row with Households and Production sector columns");
+
+        // Deliberately make the equation sign hints disagree with the runtime numeric values.
+        transactionFlowMatrix.setCellEquation(wagesRow, householdsCol, "-SeqConflictHouseholds");
+        transactionFlowMatrix.setCellEquation(wagesRow, productionCol, "+SeqConflictProduction");
+        ComputedValues.setComputedValueDirect(ComputedValues.getFlowComputedKeyForName("-SeqConflictHouseholds"), 12);
+        ComputedValues.setComputedValueDirect(ComputedValues.getFlowComputedKeyForName("+SeqConflictProduction"), -12);
+
+        String rendered = diagram.getRenderedPlantUmlSource();
+        assertTrue(rendered.contains("Production -> Households : Wages\\n(" + CircuitElm.showFormat.format(12) + ")"),
+            "Nonzero numeric signs should determine source/target direction when they conflict with equation hints");
+        assertFalse(rendered.contains("Households -> Production : Wages\\n(" + CircuitElm.showFormat.format(12) + ")"),
+            "Equation sign hints should not override the runtime numeric direction");
+    }
+
+    @Test
     @DisplayName("SFC tables with asset/liability/equity column types still generate participants")
     void sfcTableWithNonSectorTypesStillGeneratesParticipants() throws Exception {
         loadCircuitText(

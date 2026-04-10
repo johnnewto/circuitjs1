@@ -2,6 +2,7 @@ package com.lushprojects.circuitjs1.client.elements.economics;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.DisplayName;
@@ -28,5 +29,11 @@ class EquationTableScopePlotValueTest {
         assertTrue(EquationTableScopePlotValue.matches(encoded, "cash"));
         assertFalse(EquationTableScopePlotValue.matches(encoded, "cash->gnd"));
         assertNotEquals(encoded, EquationTableScopePlotValue.encode("profits"));
+    }
+
+    @Test
+    @DisplayName("row scope legend omits the equation table name")
+    void rowScopeLegendOmitsTheEquationTableName() {
+        assertEquals("Profit", EquationTableElm.formatScopeLegendLabel("Demo", "Profit"));
     }
 }

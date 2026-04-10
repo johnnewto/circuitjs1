@@ -1,6 +1,6 @@
 ```{r}
 dis_eqs <- sfcr_set(
-  # [ x=128 y=56 uid=yzYTYM invisible=false ]
+  # [ x=-48 y=72 uid=yzYTYM invisible=false ]
   # Consumption expectations and demand
   ydhs_E ~ epsilon * last(ydhs) + (1 - epsilon) * last(ydhs_E),  # Expected Haig-Simons real disposable income  [mode=param ]
   c ~ alpha0 + \alpha_1 * ydhs_E + \alpha_2 * last(mh),  # Real consumption  [mode=param ]
@@ -37,7 +37,7 @@ dis_eqs <- sfcr_set(
 
 ```{r}
 dis_ext <- sfcr_set(
-  # [ x=752 y=88 uid=bSDfq8 invisible=false ]
+  # [ x=448 y=280 uid=bSDfq8 invisible=false ]
   # Exogenous variables
   rl ~ 0.025,  # Interest rate on loans  [mode=param ]
   pr ~ 1,  # Labor productivity  [mode=param ]
@@ -57,7 +57,7 @@ dis_ext <- sfcr_set(
 
 ```{r}
 bs_dis <- sfcr_matrix(
-  # [ x=144 y=-72 uid=FmL6J4 type: transaction_flow invisible=false ]
+  # [ x=-32 y=-88 uid=FmL6J4 type: transaction_flow invisible=false ]
   columns = c("Households", "Production firms", "Banks"),
   codes = c("H1", "P2", "B3"),
   type = c("", "", ""),
@@ -70,7 +70,7 @@ bs_dis <- sfcr_matrix(
 
 ```{r}
 tfm <- sfcr_matrix(
-  # [ x=160 y=360 uid=fXxCPm type: transaction_flow invisible=false ]
+  # [ x=-368 y=328 uid=fXxCPm type: transaction_flow invisible=false ]
   columns = c("Households", "Firms_current", "Firms_capital", "Banks_current", "Banks_capital"),
   codes = c("H1", "F2", "F3", "B4", "B5"),
   type = c("", "", "", "", ""),
@@ -87,7 +87,7 @@ tfm <- sfcr_matrix(
 ```
 
 ```{r}
-@startuml x=-576 y=-72 uid=U0b7xP w=669 h=526 width=660 scale=0.981203007518797
+@startuml x=-576 y=-72 uid=U0b7xP w=525 h=398 width=660 scale=0.7406015037593985
    source: tfm
 @end
 ```
@@ -118,16 +118,31 @@ tfm <- sfcr_matrix(
 @zorder
   uid:FmL6J4 z:0
   uid:bSDfq8 z:1
-  uid:yzYTYM z:2
-  uid:punvQr z:3
-  uid:U0b7xP z:4
-  uid:fXxCPm z:5
+  uid:punvQr z:2
+  uid:U0b7xP z:3
+  uid:fXxCPm z:4
+  uid:yzYTYM z:5
+  uid:3UYL3_ z:6
+@end
+```
+
+```{r}
+@scope Embedded_Scope_1 position=-1
+  x1: 496
+  y1: 0
+  x2: 880
+  y2: 176
+  elmUid: 3UYL3_
+  speed: 1
+  flags: x6001206
+  source: uid:yzYTYM value:1073846257
+  trace: uid:yzYTYM value:1073744315
 @end
 ```
 
 ```{r}
 @circuit
-431 640 128 704 160 0 100 true false U:punvQr Z:3
+431 -496 384 -432 416 0 100 true false U:punvQr Z:2
 @end
 ```
 
