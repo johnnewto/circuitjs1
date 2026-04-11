@@ -53,7 +53,7 @@ This index reflects the current mixed architecture in the codebase:
 ### EQUATION_TABLE_CURRENT_FLOW_MODE.md
 **Purpose:** Detailed reference for EquationTable row output modes and current-flow behavior  
 **Key Points:**
-- Documents `VOLTAGE_MODE`, `FLOW_MODE`, and `PARAM_MODE` (legacy notes may mention removed `STOCK_MODE`)
+- Historical design note for removed `FLOW_MODE`; current code uses active `VOLTAGE_MODE` and `PARAM_MODE` plus legacy-flow compatibility
 - Includes stamping and lifecycle details (`stamp`, `doStep`, `startIteration`, `stepFinished`)
 - Covers `ComputedValues` timing and convergence considerations
 

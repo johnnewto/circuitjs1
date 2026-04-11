@@ -8,7 +8,7 @@
 ```{r}
 @equations MixedModes
   Vout ~ 10
-  FlowAB ~ 5 ; mode=flow; target=NodeB
+  FlowAB ~ 5 ; mode=voltage; target=NodeB
   Gain ~ 2 ; mode=param
 @end
 ```

@@ -66,15 +66,15 @@ At steady state (t → ∞):
 @end
 
 @equations Firms x=80 y=504
-  Y ~ Cs + Is ; mode=flow ; slider=a ; sliderValue=0.5  # National income (output)
-  WBd ~ Y - rl * Ld - AF ; mode=flow ; slider=b ; sliderValue=0.5  # Wage bill demanded
-  AF ~ \delta * K ; mode=flow ; slider=c ; sliderValue=0.5  # Amortization funds = delta * lag(K,1)
-  Ld->Ls ~ Id - AF ; mode=flow ; slider=d ; sliderValue=0.5  # Loan demand
+  Y ~ Cs + Is ; mode=voltage ; slider=a ; sliderValue=0.5  # National income (output)
+  WBd ~ Y - rl * Ld - AF ; mode=voltage ; slider=b ; sliderValue=0.5  # Wage bill demanded
+  AF ~ \delta * K ; mode=voltage ; slider=c ; sliderValue=0.5  # Amortization funds = delta * lag(K,1)
+  Ld->Ls ~ Id - AF ; mode=voltage ; slider=d ; sliderValue=0.5  # Loan demand
 @end
 
 @equations Households x=384 y=504
-  YD ~ WBs + rm * Mh ; mode=flow ; slider=a ; sliderValue=0.5  # Household disposable income = WBs + lag(rm,1) * lag(Mh,1)
-  Mh ~ YD - Cd ; mode=stock ; slider=b ; sliderValue=0.5  # Household money holdings (deposits)
+  YD ~ WBs + rm * Mh ; mode=voltage ; slider=a ; sliderValue=0.5  # Household disposable income = WBs + lag(rm,1) * lag(Mh,1)
+  Mh ~ YD - Cd ; mode=voltage ; slider=b ; sliderValue=0.5  # Household money holdings (deposits)
 @end
 
 @equations Banks x=624 y=536
@@ -83,20 +83,20 @@ At steady state (t → ∞):
 @end
 
 @equations WageBill x=96 y=664
-  WBs ~ 1 * Ns ; mode=flow ; slider=a ; sliderValue=0.5  # Wage bill supplied
-  Nd->Ns ~ Y / pr ; mode=flow ; slider=b ; sliderValue=0.5  # Labor demand
-  W ~ WBd / max(Nd, 0.01) ; mode=flow ; slider=c ; sliderValue=0.5  # Wage rate
+  WBs ~ 1 * Ns ; mode=voltage ; slider=a ; sliderValue=0.5  # Wage bill supplied
+  Nd->Ns ~ Y / pr ; mode=voltage ; slider=b ; sliderValue=0.5  # Labor demand
+  W ~ WBd / max(Nd, 0.01) ; mode=voltage ; slider=c ; sliderValue=0.5  # Wage rate
 @end
 
 @equations Consumption x=400 y=600
-  Cd->Cs ~ \alpha0 + \alpha1 * YD + \alpha2 * Mh ; mode=flow ; slider=a ; sliderValue=0.5  # Consumption demand
+  Cd->Cs ~ \alpha0 + \alpha1 * YD + \alpha2 * Mh ; mode=voltage ; slider=a ; sliderValue=0.5  # Consumption demand
 @end
 
 @equations Investment x=400 y=664
-  K ~ Id - DA ; mode=stock ; slider=a ; sliderValue=0.5  # Capital stock
-  DA ~ \delta * K ; mode=flow ; slider=b ; sliderValue=0.5  # Depreciation actual = delta * lag(K,1)
-  KT ~ \kappa * Y ; mode=flow ; slider=c ; sliderValue=0.5  # Target capital stock = kappa * lag(Y,1)
-  Id ~ \gamma * (KT - K) + DA ; mode=flow ; slider=d ; sliderValue=0.5  # Investment demand
+  K ~ Id - DA ; mode=voltage ; slider=a ; sliderValue=0.5  # Capital stock
+  DA ~ \delta * K ; mode=voltage ; slider=b ; sliderValue=0.5  # Depreciation actual = delta * lag(K,1)
+  KT ~ \kappa * Y ; mode=voltage ; slider=c ; sliderValue=0.5  # Target capital stock = kappa * lag(Y,1)
+  Id ~ \gamma * (KT - K) + DA ; mode=voltage ; slider=d ; sliderValue=0.5  # Investment demand
 @end
 
 @matrix Balance_Sheet x=80 y=360

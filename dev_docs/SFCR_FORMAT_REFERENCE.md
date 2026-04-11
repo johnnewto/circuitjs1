@@ -181,7 +181,7 @@ All equations and constants. Creates an `EquationTableElm`.
 Optional per-row metadata can be appended using `; key=value` tokens:
 
 ```
-  WBs ~ W * Ns ; mode=flow ; target=WBd ; slider=wageRate ; sliderValue=0.88 ; initial=0
+  WBs ~ W * Ns ; mode=voltage ; target=WBd ; slider=wageRate ; sliderValue=0.88 ; initial=0
 ```
 
 | Metadata key | Meaning |

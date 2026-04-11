@@ -902,17 +902,17 @@ public class Expr {
 		String  initKey1 = resolutionKeysCached ? cachedInitUnderscore : (varName + "_init");
 		String  initKey2 = resolutionKeysCached ? cachedInitNoUnderscore : (varName + "init");
 		// Mirror same-period node-reference precedence as closely as possible:
-		// parameter-style names first, then FLOW values, then base labeled-node/
+		// parameter-style names first, then legacy .flow aliases, then base labeled-node/
 		// computed values. This avoids last(X) accidentally reading a labeled node
-		// voltage when X currently resolves to X.flow in FLOW mode.
+		// voltage when X currently resolves to X.flow through legacy compatibility.
 		if (isParam) {
 		    Double laggedParameterValue = getLaggedByMode(varName, context);
 		    if (laggedParameterValue != null) {
 			return laggedParameterValue.doubleValue();
 		    }
 		}
-		// FLOW rows publish under a dedicated *.flow namespace. Prefer the
-		// lagged flow key before the base name so last(X) matches X in flow mode.
+		// Legacy flow-compatible rows publish under a dedicated *.flow namespace.
+		// Prefer the lagged flow key before the base name so last(X) matches X there.
 		if (flowKey != null) {
 		    Double laggedFlowValue = getLaggedByMode(flowKey, context);
 		    if (laggedFlowValue != null) {
@@ -1070,11 +1070,11 @@ public class Expr {
 	    //
 	    // Resolution order (MNA mode):
 	    // 1) PARAM name exact match from ComputedValues (parameter override)
-	    // 2) NAME.flow from ComputedValues (flow-first behavior)
+	    // 2) NAME.flow from ComputedValues (legacy-flow-first behavior)
 	    // 3) Labeled-node voltage from matrix solution (physical node value)
 	    // 4) NAME exact match from ComputedValues (non-physical fallback)
 	    //
-	    // In pure-computational mode (no MNA): NAME.flow first, then NAME.
+	    // In pure-computational mode (no MNA): legacy NAME.flow first, then NAME.
 	    if (CirSim.getInstance() != null && nodeName != null) {
 		if (CirSim.getInstance().isEquationTableMnaMode()) {
 			    // PARAM names in MNA mode must resolve from ComputedValues first,

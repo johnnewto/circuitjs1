@@ -42,8 +42,8 @@ Notes:
 @end
 
 @equations Stock.Based x=96 y=224
-  step_{stock1y} ~ (step_{in} - step_{stock1y}) / tau ; mode=stock ; slider=a ; sliderValue=0.5  # Stock-based delayed step
-  sine_{stock1y} ~ (sine_{in} - sine_{stock1y}) / tau ; mode=stock ; slider=b ; sliderValue=0.5  # Stock-based delayed sine
+  step_{stock1y} ~ (step_{in} - step_{stock1y}) / tau ; mode=voltage ; slider=a ; sliderValue=0.5  # Stock-based delayed step
+  sine_{stock1y} ~ (sine_{in} - sine_{stock1y}) / tau ; mode=voltage ; slider=b ; sliderValue=0.5  # Stock-based delayed sine
 @end
 
 @equations Continuous.Expectations x=400 y=48

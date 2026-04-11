@@ -13,9 +13,9 @@
 
 @equations EqnTable x=-288 y=96
   \theta ~ 1 ; mode=voltage ; slider=a ; sliderValue=0.5
-  Y2 ~ 1*Y ; mode=flow ; slider=b ; sliderValue=0.5
+  Y2 ~ 1*Y ; mode=voltage ; slider=b ; sliderValue=0.5
   Y3 ~ smooth(Y2, 1) ; mode=voltage ; slider=c ; sliderValue=0.5  # hint3
-  Y4 ~ smooth(Y2, 1) ; mode=flow ; slider=d ; sliderValue=0.5  # hint4
+  Y4 ~ smooth(Y2, 1) ; mode=voltage ; slider=d ; sliderValue=0.5  # hint4
 @end
 
 @hints

@@ -1,10 +1,12 @@
 # Equation Table Reference v2
 
+> Historical note: this document describes an older implementation where `FLOW_MODE` was still an active runtime mode. Current code uses active `VOLTAGE_MODE` and `PARAM_MODE`, with legacy-flow compatibility only.
+
 ## Overview
 
 `EquationTableElm` is a table-driven equation element that can run in two simulator-wide modes:
 
-- **MNA/Electrical mode** (`sim.equationTableMnaMode = true`): each row can stamp into the circuit as voltage or flow dynamics.
+- **MNA/Electrical mode** (`sim.equationTableMnaMode = true`): current code stamps active voltage-mode rows; this document's flow-mode discussion is historical.
 - **Pure Computational mode**: rows evaluate equations and publish values only through `ComputedValues`.
 
 The element is designed as a **high-impedance computational source** (`getConnection()` returns `false`) and supports up to **32 rows**.
@@ -247,4 +249,3 @@ Common getters/setters:
 
 - MNA mode is controlled globally (`sim.equationTableMnaMode`), not per-table.
 - Flow rows are directional current injections; naming should reflect source/target intent.
-

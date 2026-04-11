@@ -23,13 +23,12 @@ class EquationTableSemanticsTest {
     }
 
     @Test
-    @DisplayName("VOLTAGE uses voltage source; FLOW and PARAM do not")
+    @DisplayName("VOLTAGE uses voltage source; PARAM does not")
     void testRowModeSemantics() {
         assertTrue(EquationTableSemantics.usesVoltageSource(EquationTableElm.RowOutputMode.VOLTAGE_MODE));
-        assertFalse(EquationTableSemantics.usesVoltageSource(EquationTableElm.RowOutputMode.FLOW_MODE));
         assertFalse(EquationTableSemantics.usesVoltageSource(EquationTableElm.RowOutputMode.PARAM_MODE));
 
-        assertTrue(EquationTableSemantics.isFlowMode(EquationTableElm.RowOutputMode.FLOW_MODE));
+        assertFalse(EquationTableSemantics.isFlowMode(EquationTableElm.RowOutputMode.VOLTAGE_MODE));
         assertTrue(EquationTableSemantics.isParamMode(EquationTableElm.RowOutputMode.PARAM_MODE));
         assertFalse(EquationTableSemantics.isParamMode(EquationTableElm.RowOutputMode.VOLTAGE_MODE));
     }

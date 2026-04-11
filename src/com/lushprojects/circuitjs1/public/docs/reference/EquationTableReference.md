@@ -20,7 +20,7 @@ It supports two simulator-wide execution modes:
 | Post count | `0` |
 | High-impedance | `getConnection()` always returns `false` |
 | Ground connection | `hasGroundConnection()` always returns `false` |
-| Nonlinear | effectively true for all non-comment rows; FLOW rows always require `doStep()` |
+| Nonlinear | effectively true for all non-comment rows |
 | Global mode switch | `sim.equationTableMnaMode` |
 
 ## Per-Row Data Model (`EquationRow`)
@@ -32,12 +32,12 @@ Each row stores:
 - `initialEquation`
 - `sliderVarName`
 - `sliderValue`
-- `outputMode` (`VOLTAGE_MODE`, `FLOW_MODE`, `PARAM_MODE`)
-- `targetNodeName` (used by FLOW)
-- `shuntResistance` (FLOW stabilization/load, default `1`)
+- `outputMode` (`VOLTAGE_MODE`, `PARAM_MODE`; legacy `FLOW_MODE` inputs are normalized on load)
+- `targetNodeName` (legacy flow-compatibility metadata)
+- `shuntResistance` (legacy flow-compatibility metadata, default `1`)
 - `useBackwardEuler` (persisted, currently not used in mode-specific stamping)
 
-Runtime state also includes parsed expressions, `ExprState`, node ids, voltage-source index, flow value, and Newton Jacobian debug flags.
+Runtime state also includes parsed expressions, `ExprState`, node ids, voltage-source index, legacy `.flow` alias state, and Newton Jacobian debug flags.
 
 ## Row Output Modes
 
@@ -50,18 +50,17 @@ Equation result is treated as a voltage and applied via a voltage source.
 - Stamps a tiny load resistor `1e9 Ω` from node to ground.
 - In `doStep()`: stamps RHS value (or Newton Jacobian linearization when eligible).
 
-### `FLOW_MODE`
+### Legacy Flow Compatibility
 
-Equation result is treated as current between source/target endpoints.
+`FLOW_MODE` is no longer a runtime stamping mode.
 
-- Single-node flow (empty target or `gnd`): current is `gnd → outputName`.
-- Two-node flow: current is `outputName → targetNodeName`.
-- Endpoints are marked nonlinear and get shunt resistors to ground using `shuntResistance` (default `1 Ω`).
-- In `doStep()`: stamps `stampCurrentSource(source, target, value)` unless Newton Jacobian flow linearization is applied.
-- Publishes flow namespace keys:
-  - `<source>.flow = -value` for two-node flow (outflow sign)
-  - `<target>.flow = +value` for two-node flow
+- Older files using `mode=flow`, `mode=stock`, or legacy flow ordinals still load.
+- Those rows now execute through the voltage-mode stamping path.
+- If legacy source/target metadata is present, compatibility aliases are still published:
+  - `<source>.flow = -value` for two-node legacy flow metadata
+  - `<target>.flow = +value` for two-node legacy flow metadata
   - source-only publish for ground-target case
+- New content should use `VOLTAGE_MODE` or `PARAM_MODE`.
 
 ### `PARAM_MODE`
 
@@ -87,7 +86,7 @@ A row is a comment if `outputName.trim().startsWith("#")`.
 2. Ensures pre-registration of parameter/computed names.
 3. Returns immediately in pure-computational global mode.
 4. Resolves labeled/internal nodes.
-5. Dispatches per-row stamp through mode handlers (`VOLTAGE`/`FLOW`/`PARAM`).
+5. Dispatches per-row stamp through mode handlers (`VOLTAGE`/`PARAM`).
 
 ### `postStamp()`
 
@@ -108,7 +107,7 @@ Per row:
 ### `stepFinished()`
 
 - Re-publishes outputs to `ComputedValues`.
-- Re-publishes FLOW `.flow` keys and marks them computed-this-step.
+- Re-publishes legacy `.flow` compatibility keys and marks them computed-this-step when present.
 - Commits integration state (`ExprState.commitIntegration`).
 - Updates last-values state for next timestep.
 
@@ -124,7 +123,7 @@ At `t=0` for rows with an initial expression:
 1. First subiteration stamps placeholder zero (voltage RHS path).
 2. Next subiteration evaluates initial expression.
 3. Seeds row output state and expression history.
-4. Immediately publishes output (and FLOW keys for FLOW rows).
+4. Immediately publishes output (and legacy `.flow` compatibility aliases when present).
 
 ## Global Label Coordination (MNA)
 

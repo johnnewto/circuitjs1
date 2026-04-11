@@ -9,14 +9,14 @@ This model demonstrates Stock-Flow Consistent modeling using **EquationTableElm 
 
 ### Approach
 This model uses:
-- **FLOW mode rows** (`A->B`) — equations stamp current sources from source sector to target sector
+- **Legacy flow-notation rows** (`A->B`) — retained to show directional source/target metadata while rows now execute in voltage mode
 - **STOCK mode rows** — equations define net inflow and update stock levels with capacitor-companion integration
 - **PARAM mode rows** — behavioral parameters (`\alpha_1`, `\alpha_2`, `\theta`, `G`, `W`) shared across equations
 - **Balance Sheet & Transaction Flow matrices** — for accounting verification
 
 ### Flow-Mode Semantics
-- `X->Y ~ expr ; mode=flow` means positive flow moves from `X` to `Y`
-- FLOW rows enforce directional transaction logic through MNA current-source stamping
+- `X->Y ~ expr ; mode=voltage` means positive flow metadata moves from `X` to `Y`
+- Legacy flow notation preserves directional transaction metadata and `.flow` aliases
 - Current conservation (KCL) links all sector flows consistently at shared labeled nodes
 
 ### Stock Accumulation
@@ -61,19 +61,19 @@ Godley, W. & Lavoie, M. (2007). *Monetary Economics*, Chapter 3.
 @end
 
 @equations equations_1 x=24 y=152
-  G_d->G_s ~ 1*G ; mode=flow ; slider=b ; sliderValue=0.5  # Services supplied to / demand by Govt
+  G_d->G_s ~ 1*G ; mode=voltage ; slider=b ; sliderValue=0.5  # Services supplied to / demand by Govt
   N_ss ~ N_d ; mode=voltage ; slider=d ; sliderValue=0.5  # Supply/Demand for labour
-  W_s->W_d ~ W * N_s ; mode=flow ; slider=f ; sliderValue=0.5  # Wages supplied , demanded
-  YD ~ W * N_d + T_s ; mode=flow ; slider=e ; sliderValue=0.5  # Disposable Income
-  T_s->T_d ~ \theta * -W_s ; mode=flow ; slider=f ; sliderValue=0.5  # Tax
-  C_d->C_s ~ \alpha_1*YD+ \alpha_2*H_h ; mode=flow ; slider=g ; sliderValue=0.5  # Consumption goods Supply/Demand
+  W_s->W_d ~ W * N_s ; mode=voltage ; slider=f ; sliderValue=0.5  # Wages supplied , demanded
+  YD ~ W * N_d + T_s ; mode=voltage ; slider=e ; sliderValue=0.5  # Disposable Income
+  T_s->T_d ~ \theta * -W_s ; mode=voltage ; slider=f ; sliderValue=0.5  # Tax
+  C_d->C_s ~ \alpha_1*YD+ \alpha_2*H_h ; mode=voltage ; slider=g ; sliderValue=0.5  # Consumption goods Supply/Demand
 @end
 
 @equations equations_2 x=376 y=152
-  H_{hh} ~ YD + C_d ; mode=stock ; slider=b ; sliderValue=0.5  # Cash money held by households
+  H_{hh} ~ YD + C_d ; mode=voltage ; slider=b ; sliderValue=0.5  # Cash money held by households
   H_s ~ Govt ; mode=voltage ; slider=c ; sliderValue=0.5  # Money supplied by the central bank
-  Y ~ C_s + G_s ; mode=flow ; slider=b ; sliderValue=0.5  # Output
-  N_d ~ Y / W ; mode=flow ; slider=c ; sliderValue=0.5  # Supply/Demand for labour
+  Y ~ C_s + G_s ; mode=voltage ; slider=b ; sliderValue=0.5  # Output
+  N_d ~ Y / W ; mode=voltage ; slider=c ; sliderValue=0.5  # Supply/Demand for labour
   N_s ~ N_d ; mode=voltage ; slider=e ; sliderValue=0.5  # Supply/Demand for labour
 @end
 

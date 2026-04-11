@@ -1,15 +1,14 @@
 # Adding Current Flow Mode to EquationTableElm (Historical Notes)
 
-> **Status update (current code):** `EquationTableElm` now supports `VOLTAGE_MODE`, `FLOW_MODE`, and `PARAM_MODE`.
-> `STOCK_MODE` has been removed from runtime behavior. Any legacy references to `STOCK_MODE`
-> in this document are historical implementation notes.
+> **Status update:** This is a historical design note. Current code no longer has active `FLOW_MODE`; `EquationTableElm` uses active `VOLTAGE_MODE` and `PARAM_MODE`, with legacy-flow compatibility only.
+> `STOCK_MODE` and runtime `FLOW_MODE` references in this document are historical implementation notes.
 
 ## Implementation Status: ✅ IMPLEMENTED
 
 The core implementation is complete as of the latest commit. The following features have been added to `EquationTableElm.java`:
 
 ### What's Implemented
-- **RowOutputMode enum (current):** `VOLTAGE_MODE`, `FLOW_MODE`, `PARAM_MODE`
+- **Historical RowOutputMode enum described here:** `VOLTAGE_MODE`, `FLOW_MODE`, `PARAM_MODE`
 - **Per-row mode arrays**: `outputModes[]`, `targetNodeNames[]`, `legacyStockParam[]`
 - **Capacitor state tracking**: `capLastVoltages[]`, `capLastCurrents[]`, `capCurSourceValue[]`
 - **stamp() method**: Dispatches to mode-specific stamping (`stampVoltageModeRow()`, `stampCurrentModeRow()`, `stampCapacitorModeRow()`)

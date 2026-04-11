@@ -31,8 +31,8 @@ import com.google.gwt.event.dom.client.MouseWheelHandler;
  * 
  * <h3>Operational Modes:</h3>
  * <ul>
- *   <li><b>MNA (Electrical) mode:</b> Stamps into the circuit matrix via voltage sources,
- *       or current sources. Outputs connect to labeled nodes.</li>
+ *   <li><b>MNA (Electrical) mode:</b> Stamps into the circuit matrix via voltage sources.
+ *       Outputs connect to labeled nodes.</li>
  *   <li><b>Pure Computational mode:</b> No electrical posts or circuit connections.
  *       Values are written to the ComputedValues registry for other elements to read.</li>
  * </ul>
@@ -42,8 +42,8 @@ import com.google.gwt.event.dom.client.MouseWheelHandler;
  *   <li>Multiple rows (1-128), each defining an independent equation</li>
  *   <li>Each row has a named output that becomes accessible as a labeled node</li>
  *   <li>Support for initial value equations (evaluated only at t=0)</li>
- *   <li>Row output modes: VOLTAGE (default), FLOW (current source), PARAM (computed-only)</li>
- *   <li>FLOW rows publish endpoint flow keys with direction sign:
+ *   <li>Row output modes: VOLTAGE (default) and PARAM (computed-only)</li>
+ *   <li>Legacy flow-compatible rows may still publish endpoint `.flow` keys with direction sign:
  *       &lt;source&gt;.flow = -value, &lt;target&gt;.flow = +value
  *       (target omitted when it is ground)</li>
  *   <li>integrate() and diff() functions for dynamic systems</li>
@@ -75,7 +75,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     /** Maximum number of equation rows supported */
     public static final int MAX_ROWS = 256;
 
-    /** Default FLOW shunt resistance to avoid loading by default. */
+    /** Default legacy-flow shunt resistance retained for serialized compatibility data. */
     private static final double DEFAULT_FLOW_SHUNT_RESISTANCE = 1;
 
     /** Default base convergence tolerance for equation convergence checks. */
@@ -121,8 +121,6 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     public enum RowOutputMode {
         /** Voltage mode (default): stamps voltage source, equation = voltage value */
         VOLTAGE_MODE,
-        /** Flow mode: stamps current source between two nodes, equation = flow rate */
-        FLOW_MODE,
         /** Parameter mode: computes value and publishes to ComputedValues only */
         PARAM_MODE
     }
@@ -196,10 +194,6 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         double broydenLastFunctionValue;
         int broydenIterationsSinceRefresh;
         
-        // MNA runtime state (FLOW_MODE)
-        int targetNodeNumber;
-        double flowValue;
-        
         // Cached flow keys (computed once at stamp/setup time, avoids per-call StringBuilder)
         String cachedSourceFlowKey;
         String cachedTargetFlowKey;
@@ -223,10 +217,9 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             sliderValue = 0;
             exprState = null;  // lazily allocated when row is evaluated
             outputMode = RowOutputMode.VOLTAGE_MODE;
-            targetNodeName = "";
+            targetNodeName = null;
             shuntResistance = DEFAULT_FLOW_SHUNT_RESISTANCE;
             useBackwardEuler = false;  // trapezoidal by default
-            targetNodeNumber = -1;
             labeledNodeNumber = -1;
             rowVoltSource = -1;
             cachedSourceFlowKey = null;
@@ -252,14 +245,14 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         /** Recompute cached flow keys from current output/target names. */
         void updateCachedFlowKeys() {
             if (outputName != null && !outputName.trim().isEmpty()) {
-                cachedSourceFlowKey = ComputedValues.getFlowComputedKeyForName(outputName.trim());
+                cachedSourceFlowKey = ComputedValues.getLegacyFlowComputedKeyForName(outputName.trim());
             } else {
                 cachedSourceFlowKey = null;
             }
             if (targetNodeName != null) {
                 String trimmed = targetNodeName.trim();
                 if (!trimmed.isEmpty() && !trimmed.equalsIgnoreCase("gnd")) {
-                    cachedTargetFlowKey = ComputedValues.getFlowComputedKeyForName(trimmed);
+                    cachedTargetFlowKey = ComputedValues.getLegacyFlowComputedKeyForName(trimmed);
                 } else {
                     cachedTargetFlowKey = null;
                 }
@@ -282,13 +275,20 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             outputValue = 0.0;
             lastOutputValue = 0.0;
             initialValueApplied = false;
-            flowValue = 0.0;
             isStock = false;
             isCyclic = false;
             lastNewtonJacobianApplied = false;
             lastNewtonJacobianStatus = "not attempted";
             invalidateBroydenState();
         }
+    }
+
+    private static boolean hasLegacyFlowTarget(String targetNodeName) {
+        return targetNodeName != null && !targetNodeName.trim().isEmpty();
+    }
+
+    private boolean isLegacyFlowCompatibleRow(int row) {
+        return hasLegacyFlowTarget(rows[row].targetNodeName);
     }
     
     //=============================================================================
@@ -374,103 +374,6 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     }
     
     /**
-     * FLOW_MODE handler: injects current between source and target nodes.
-     * Equation result is the current magnitude.
-     */
-    private class FlowModeHandler implements RowModeHandler {
-        @Override
-        public void stamp(int row) {
-            // Resolve the named node
-            Integer namedNode = LabeledNodeElm.getByName(rows[row].outputName);
-            if (namedNode == null || namedNode < 0) return;
-            
-            // Resolve target node (default to ground if empty or "gnd")
-            String targetName = rows[row].targetNodeName;
-            boolean singleNode = (targetName == null || targetName.trim().isEmpty() ||
-                targetName.trim().equalsIgnoreCase("gnd"));
-            
-            int sourceNode, targetNode;
-            if (singleNode) {
-                // Single-node FLOW: current flows FROM ground TO the named node.
-                // Positive equation value = current injected into the node.
-                sourceNode = 0;   // ground
-                targetNode = namedNode;
-            } else {
-                // Two-node FLOW: current flows FROM source TO target.
-                // Source is the output name, target is the explicit target node.
-                sourceNode = namedNode;
-                Integer resolvedTarget = LabeledNodeElm.getByName(targetName.trim());
-                if (resolvedTarget == null || resolvedTarget < 0) return;
-                targetNode = resolvedTarget;
-            }
-            
-            // Store resolved node numbers for doStep()
-            rows[row].labeledNodeNumber = sourceNode;
-            rows[row].targetNodeNumber = targetNode;
-            
-            // Mark nodes as nonlinear to prevent matrix elimination
-            sim.stampNonLinear(sourceNode);
-            if (targetNode > 0) sim.stampNonLinear(targetNode);
-
-            // Stabilize FLOW-only/floating nodes with configurable shunt resistance.
-            // Lowering shunt R creates a real electrical load at FLOW endpoints.
-            double shuntR = rows[row].shuntResistance;
-            if (shuntR <= 0) shuntR = DEFAULT_FLOW_SHUNT_RESISTANCE;
-            if (sourceNode > 0) sim.stampResistor(sourceNode, 0, shuntR);
-            if (targetNode > 0) sim.stampResistor(targetNode, 0, shuntR);
-            
-            sim.stampRightSide(sourceNode);
-            sim.stampRightSide(targetNode);
-        }
-        
-        @Override
-        public void evaluate(int row) {
-            if (rows[row].compiledExpr == null) return;
-
-            rows[row].lastNewtonJacobianApplied = false;
-            rows[row].lastNewtonJacobianStatus = "not attempted";
-            
-            int sourceNode = rows[row].labeledNodeNumber;
-            int targetNode = rows[row].targetNodeNumber;
-            if (sourceNode < 0 || targetNode < 0) return;
-            
-            ExprState state = prepareEvalState(row);
-            double flowValue = EquationTableSemantics.computeFlowRowValue(
-                rows[row].compiledExpr,
-                state,
-                volts,
-                sourceNode,
-                targetNode,
-                rows[row].shuntResistance
-            );
-            
-            // Guard against NaN/Infinity (same as VoltageModeHandler)
-            if (Double.isNaN(flowValue) || Double.isInfinite(flowValue)) {
-                flowValue = 0;
-                sim.setConverged(false);
-            }
-            
-            rows[row].flowValue = flowValue;
-            checkEquationConvergence(row, flowValue);
-            rows[row].lastOutputValue = flowValue;
-            rows[row].outputValue = flowValue;
-            
-            registerFlowValue(row, flowValue);
-
-            if (!stampFlowModeNewtonJacobian(row, state, flowValue, sourceNode, targetNode)) {
-                if ("not attempted".equals(rows[row].lastNewtonJacobianStatus)) {
-                    rows[row].lastNewtonJacobianStatus = "fallback: direct current source";
-                }
-                sim.stampCurrentSource(sourceNode, targetNode, flowValue);
-            }
-            // Do NOT registerOutputValue here: outputName for FLOW is the source
-            // node name (e.g. "S1" from "S1->S2"), and registering the flow
-            // magnitude would clobber the node's main computed voltage/value name.
-            // FLOW values are published via a separate .flow key namespace.
-        }
-    }
-
-    /**
      * PARAM_MODE handler: computes an equation and publishes the value only.
      * No matrix stamping, no nodes, no voltage/current sources.
      */
@@ -496,14 +399,11 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     }
     
     /** Cached handler instances (created lazily) */
-    private RowModeHandler voltageModeHandler, flowModeHandler, paramModeHandler;
+    private RowModeHandler voltageModeHandler, paramModeHandler;
     
     /** Get the handler for a given output mode */
     private RowModeHandler getHandler(RowOutputMode mode) {
         switch (mode) {
-        case FLOW_MODE:
-            if (flowModeHandler == null) flowModeHandler = new FlowModeHandler();
-            return flowModeHandler;
         case PARAM_MODE:
             if (paramModeHandler == null) paramModeHandler = new ParamModeHandler();
             return paramModeHandler;
@@ -787,8 +687,9 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                         if (modeOrdinal == 0) {
                             rows[row].outputMode = RowOutputMode.VOLTAGE_MODE;
                         } else if (modeOrdinal == 1 || modeOrdinal == 2) {
-                            // Backward compatibility: old dumps used 2=STOCK_MODE.
-                            rows[row].outputMode = RowOutputMode.FLOW_MODE;
+                            // Backward compatibility: old dumps used 1=FLOW and 2=STOCK.
+                            rows[row].outputMode = RowOutputMode.VOLTAGE_MODE;
+                            rows[row].targetNodeName = "gnd";
                         } else if (modeOrdinal == 3) {
                             rows[row].outputMode = RowOutputMode.PARAM_MODE;
                         }
@@ -797,9 +698,9 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                     }
                 }
                 if (tokenIndex < tokens.size()) {
-                    rows[row].targetNodeName = CustomLogicModel.unescape(tokens.get(tokenIndex++));
-                    if (rows[row].targetNodeName.isEmpty()) {
-                        rows[row].targetNodeName = null;
+                    String parsedTarget = CustomLogicModel.unescape(tokens.get(tokenIndex++));
+                    if (!parsedTarget.isEmpty()) {
+                        rows[row].targetNodeName = parsedTarget;
                     }
                 }
             }
@@ -922,7 +823,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      *
      * Keys tracked:
      * - row output names
-     * - FLOW namespace keys (<name>.flow) for source/target
+     * - legacy flow namespace keys (<name>.flow) for migrated flow rows
      */
     private void refreshComputedNameRegistry() {
         if (registeredComputedNames == null) {
@@ -942,10 +843,10 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                     currentComputedNames.add(outputName + "init");
                 }
 
-                if (rows[row].outputMode == RowOutputMode.FLOW_MODE) {
+                if (isLegacyFlowCompatibleRow(row)) {
                     // Use cached flow keys if available, fall back to computation
                     String sourceFlowKey = rows[row].cachedSourceFlowKey;
-                    if (sourceFlowKey == null) sourceFlowKey = getFlowComputedKeyForName(outputName);
+                    if (sourceFlowKey == null) sourceFlowKey = getLegacyFlowComputedKeyForName(outputName);
                     if (sourceFlowKey != null && !sourceFlowKey.isEmpty()) {
                         currentComputedNames.add(sourceFlowKey);
                     }
@@ -960,7 +861,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                             String trimmedTarget = targetName.trim();
                             boolean hasNonGroundTarget = !trimmedTarget.isEmpty() && !trimmedTarget.equalsIgnoreCase("gnd");
                             if (hasNonGroundTarget) {
-                                targetFlowKey = getFlowComputedKeyForName(trimmedTarget);
+                                targetFlowKey = getLegacyFlowComputedKeyForName(trimmedTarget);
                                 if (targetFlowKey != null && !targetFlowKey.isEmpty()) {
                                     currentComputedNames.add(targetFlowKey);
                                 }
@@ -1130,7 +1031,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     protected String getScopeText(int value) {
         int row = findScopeRowByPlotValue(value);
         if (row >= 0) {
-            return formatScopeLegendLabel(tableName, getFlowDisplayName(row));
+            return formatScopeLegendLabel(tableName, getLegacyFlowDisplayName(row));
         }
         return super.getScopeText(value);
     }
@@ -1152,7 +1053,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     protected int getScopeUnits(int value) {
         int row = findScopeRowByPlotValue(value);
         if (row >= 0) {
-            return (rows[row].outputMode == RowOutputMode.FLOW_MODE) ? Scope.UNITS_A : Scope.UNITS_V;
+            return Scope.UNITS_V;
         }
         return super.getScopeUnits(value);
     }
@@ -1169,9 +1070,8 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         return new Point(x + tableWidth, postY);
     }
     
-    /** 
-    * @return Number of voltage sources needed - one per VOLTAGE_MODE row with valid output name.
-    * FLOW_MODE and PARAM_MODE don't use voltage sources.
+    /**
+    * @return Number of voltage sources needed - one per non-PARAM row with valid output name.
      * This counts voltage sources before findLabeledNodes() runs, so we count all valid rows.
      */
     public int getVoltageSourceCount() { 
@@ -1180,8 +1080,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         updateRowClassifications();
         int count = 0;
         for (int row = 0; row < rowCount; row++) {
-            // Only VOLTAGE mode uses voltage sources
-            if (rows[row].outputMode != RowOutputMode.VOLTAGE_MODE) continue;
+            if (rows[row].outputMode == RowOutputMode.PARAM_MODE) continue;
             if (isValidOutputName(row)) {
                 count++;
             }
@@ -1192,10 +1091,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     /**
      * Override getInternalNodeCount to create internal nodes for rows
      * that do NOT have an existing LabeledNode on the canvas.
-    * VOLTAGE_MODE may need internal nodes.
-     * FLOW_MODE may also reserve internal nodes for missing source/target names;
-     * these are auto-created during global coordination pass 2.
-    * PARAM_MODE is computation-only and never needs nodes.
+     * Non-PARAM rows may need internal nodes. PARAM rows never do.
      */
     public int getInternalNodeCount() {
         if (!isMnaMode()) return 0;
@@ -1203,27 +1099,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         updateRowClassifications();
         int count = 0;
         for (int row = 0; row < rowCount; row++) {
-            if (rows[row].outputMode == RowOutputMode.FLOW_MODE) {
-                // FLOW source may need an internal node if unresolved
-                if (isValidOutputName(row)) {
-                    Integer existingSource = LabeledNodeElm.getByName(rows[row].outputName.trim());
-                    if (existingSource == null || existingSource < 0) {
-                        count++;
-                    }
-                }
-
-                // FLOW target may need an internal node if explicit and unresolved
-                String targetName = rows[row].targetNodeName;
-                boolean singleNode = (targetName == null || targetName.trim().isEmpty() ||
-                        targetName.trim().equalsIgnoreCase("gnd"));
-                if (!singleNode) {
-                    Integer existingTarget = LabeledNodeElm.getByName(targetName.trim());
-                    if (existingTarget == null || existingTarget < 0) {
-                        count++;
-                    }
-                }
-            } else if (rows[row].outputMode != RowOutputMode.PARAM_MODE && isValidOutputName(row)) {
-                // VOLTAGE: only need internal node if NO existing LabeledNode
+            if (rows[row].outputMode != RowOutputMode.PARAM_MODE && isValidOutputName(row)) {
                 Integer existingNode = LabeledNodeElm.getByName(rows[row].outputName.trim());
                 if (existingNode == null || existingNode < 0) {
                     count++;
@@ -1233,15 +1109,10 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         return count;
     }
     
-    /** @return true if any row has an expression requiring iterative solving,
-     *  or if any row uses FLOW_MODE output mode (which always requires doStep) */
+    /** @return true if any non-comment row has an expression requiring iterative solving. */
     public boolean nonLinear() {
         updateRowClassifications();
         for (int row = 0; row < rowCount; row++) {
-            // FLOW_MODE always requires doStep() evaluation
-            if (rows[row].outputMode == RowOutputMode.FLOW_MODE) {
-                return true;
-            }
             if (!isCommentRow(row))
                 return true;
         }
@@ -1437,9 +1308,8 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * Coordinate EquationTable label resolution across all tables before stamping.
      *
      * Lightweight global coordination (no merged master table):
-    * 1) First pass: register non-FLOW row outputs (VOLTAGE/PARAM) so their names
-     *    resolve globally regardless of per-element stamp order.
-     * 2) Second pass: validate FLOW row endpoints and emit diagnostics when missing.
+     * register all non-PARAM row outputs so their names resolve globally regardless
+     * of per-element stamp order.
      *
      * Called from CirSim.stampCircuit() after node allocation and before per-element
      * stamp() calls.
@@ -1468,9 +1338,6 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             return;
         }
 
-        java.util.HashMap<EquationTableElm, Integer> nextInternalIdx = new java.util.HashMap<EquationTableElm, Integer>();
-
-        // Pass 1: create/register all non-FLOW row output names first.
         for (int t = 0; t < tables.size(); t++) {
             EquationTableElm table = tables.get(t);
             int internalNodeIdx = 0;
@@ -1478,7 +1345,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             for (int row = 0; row < table.rowCount; row++) {
                 EquationRow rowData = table.rows[row];
 
-                if (rowData.outputMode == RowOutputMode.FLOW_MODE || rowData.outputMode == RowOutputMode.PARAM_MODE) continue;
+                if (rowData.outputMode == RowOutputMode.PARAM_MODE) continue;
                 if (!table.isValidOutputName(row)) continue;
 
                 String outputName = rowData.outputName.trim();
@@ -1494,60 +1361,8 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 }
             }
 
-            nextInternalIdx.put(table, Integer.valueOf(internalNodeIdx));
         }
 
-        // Pass 2: auto-create missing FLOW endpoints, then validate.
-        for (int t = 0; t < tables.size(); t++) {
-            EquationTableElm table = tables.get(t);
-            int internalNodeIdx = 0;
-            Integer savedIdx = nextInternalIdx.get(table);
-            if (savedIdx != null) {
-                internalNodeIdx = savedIdx.intValue();
-            }
-
-            for (int row = 0; row < table.rowCount; row++) {
-                EquationRow rowData = table.rows[row];
-
-                if (rowData.outputMode != RowOutputMode.FLOW_MODE) continue;
-                if (!table.isValidOutputName(row)) continue;
-
-                String sourceName = rowData.outputName.trim();
-                Integer sourceNode = LabeledNodeElm.getByName(sourceName);
-                if (sourceNode == null || sourceNode < 0) {
-                    if (table.nodes != null && internalNodeIdx < table.nodes.length) {
-                        int internalNode = table.nodes[internalNodeIdx++];
-                        table.registerInternalNodeAsLabel(sourceName, internalNode);
-                        sourceNode = Integer.valueOf(internalNode);
-                    }
-                    if (sourceNode == null || sourceNode.intValue() < 0) {
-                        CirSim.console("[EquationTableCoord." + table.tableName + "] FLOW row " + row +
-                                " missing source node '" + sourceName + "'");
-                    }
-                }
-
-                String targetName = rowData.targetNodeName;
-                boolean singleNode = (targetName == null || targetName.trim().isEmpty() ||
-                        targetName.trim().equalsIgnoreCase("gnd"));
-                if (!singleNode) {
-                    String trimmedTarget = targetName.trim();
-                    Integer targetNode = LabeledNodeElm.getByName(trimmedTarget);
-                    if (targetNode == null || targetNode < 0) {
-                        if (table.nodes != null && internalNodeIdx < table.nodes.length) {
-                            int internalNode = table.nodes[internalNodeIdx++];
-                            table.registerInternalNodeAsLabel(trimmedTarget, internalNode);
-                            targetNode = Integer.valueOf(internalNode);
-                        }
-                        if (targetNode == null || targetNode.intValue() < 0) {
-                            CirSim.console("[EquationTableCoord." + table.tableName + "] FLOW row " + row +
-                                    " missing target node '" + trimmedTarget + "'");
-                        }
-                    }
-                }
-            }
-
-            nextInternalIdx.put(table, Integer.valueOf(internalNodeIdx));
-        }
     }
     
     /**
@@ -1593,15 +1408,23 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     }
 
     /**
-     * Build parser-safe ComputedValues key for a FLOW output name.
+     * Build parser-safe ComputedValues key for a legacy-flow compatibility name.
      * Key format: <sanitizedOutputName>.flow
      */
-    static String getFlowComputedKeyForName(String outputName) {
-        return ComputedValues.getFlowComputedKeyForName(outputName);
+    static String getLegacyFlowComputedKeyForName(String outputName) {
+        return ComputedValues.getLegacyFlowComputedKeyForName(outputName);
     }
 
     /**
-        * Register FLOW value in ComputedValues under dedicated *.flow keys.
+     * @deprecated Use {@link #getLegacyFlowComputedKeyForName(String)}. Kept for compatibility only.
+     */
+    @Deprecated
+    static String getFlowComputedKeyForName(String outputName) {
+        return getLegacyFlowComputedKeyForName(outputName);
+    }
+
+    /**
+        * Register legacy-flow compatibility aliases in ComputedValues under dedicated *.flow keys.
      *
      * Sign convention for two-node flow S1->S2:
         * - S1.flow = -value (outflow from source stock)
@@ -1609,7 +1432,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      *
         * For one-node/ground-target flow, only <source>.flow is published.
      */
-    private void registerFlowValue(int row, double value) {
+    private void registerLegacyFlowValue(int row, double value) {
         if (!isValidOutputName(row)) return;
 
         String sourceKey = rows[row].cachedSourceFlowKey;
@@ -1681,70 +1504,6 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         return true;
     }
 
-    /**
-     * Phase 1 Newton Jacobian stamping for FLOW_MODE MNA rows.
-     *
-     * With a 1Ω shunt resistor to ground on every flow endpoint, the KCL identity
-     * V_node = ±flowValue holds at each endpoint, making the flow Jacobian mathematically
-     * equivalent to two value Jacobians — one per endpoint with opposite sign conventions:
-     *
-     *   sourceNode: matrixSign = +1  →  stamps +dx,  rhs = −flowValue + Σ dx·V₀
-     *   targetNode: matrixSign = −1  →  stamps −dx,  rhs = +flowValue − Σ dx·V₀
-     *
-     * Both calls delegate to {@link #stampSingleNodeJacobian}, the same helper used by
-     * VOLTAGE_MODE, eliminating the previously duplicated per-ref perturbation loop.
-     *
-     * @return true if Jacobian stamping was applied; false to use direct current-source fallback.
-     */
-    private boolean stampFlowModeNewtonJacobian(int row, ExprState state, double flowValue, int sourceNode, int targetNode) {
-        EquationRow rowData = rows[row];
-        String ineligibleReason = EquationTableJacobianHelper.getFlowModeIneligibilityReason(this, rowData, sourceNode, targetNode);
-        if (ineligibleReason != null) {
-            rowData.lastNewtonJacobianStatus = ineligibleReason;
-            return false;
-        }
-
-        java.util.LinkedHashSet<String> refs = new java.util.LinkedHashSet<String>();
-        rowData.compiledExpr.collectSamePeriodRefs(refs);
-        java.util.LinkedHashSet<String> skippedParamRefs = EquationTableJacobianHelper.collectSkippedParameterRefs(refs);
-        String skippedParamsSuffix = EquationTableJacobianHelper.formatSkippedParameterRefs(skippedParamRefs);
-        if (refs.isEmpty()) {
-            rowData.lastNewtonJacobianStatus = "no same-period refs";
-            return false;
-        }
-
-        if (!EquationTableJacobianHelper.hasAnyMnaRefs(refs)) {
-            rowData.lastNewtonJacobianStatus = "no mna refs" + skippedParamsSuffix;
-            return false;
-        }
-
-        EquationTableJacobianHelper.JacobianComputation jacobian = EquationTableJacobianHelper.prepareSingleNodeJacobian(
-            rowData, rowData.compiledExpr, state, refs, flowValue);
-        int stampedSource = (sourceNode > 0)
-            ? EquationTableJacobianHelper.stampPreparedSingleNodeJacobian(jacobian, sourceNode, +1.0)
-            : 0;
-        int stampedTarget = (targetNode > 0)
-            ? EquationTableJacobianHelper.stampPreparedSingleNodeJacobian(jacobian, targetNode, -1.0)
-            : 0;
-        int totalStamped = stampedSource + stampedTarget;
-
-        if (totalStamped == 0) {
-            rowData.lastNewtonJacobianStatus = (jacobian.invalidDerivativeCount > 0)
-                    ? "mna refs but invalid derivatives" + skippedParamsSuffix
-                    : "mna refs but no usable derivatives" + skippedParamsSuffix;
-            return false;
-        }
-
-        rowData.lastNewtonJacobianApplied = true;
-        String appliedPrefix = EquationTableJacobianHelper.formatAppliedJacobianPrefix(jacobian.method, true);
-        if (EquationTableJacobianHelper.hasHistoricalRefSyntax(rowData.equation)) {
-            rowData.lastNewtonJacobianStatus = appliedPrefix + " (refs=" + refs.size() + "; hist ok)" + skippedParamsSuffix;
-        } else {
-            rowData.lastNewtonJacobianStatus = appliedPrefix + " (refs=" + refs.size() + ")" + skippedParamsSuffix;
-        }
-        return true;
-    }
-    
     /**
      * Check if two posts are electrically connected.
      * High-impedance design: no current path exists between any posts.
@@ -2030,9 +1789,8 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * If a LabeledNode exists on canvas, use that node.
      * Otherwise, use our internal node and register it in labelList.
      * Called during stamp() after internal nodes are allocated.
-     * 
-    * FLOW_MODE uses existing labeled nodes for source/target.
-     * VOLTAGE_MODE uses voltage sources.
+     *
+     * Non-PARAM rows use voltage sources.
      */
     private void findLabeledNodes() {
         voltSourceCount = 0;
@@ -2046,15 +1804,6 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             if (!isValidOutputName(row)) continue;
             String outputName = rows[row].outputName.trim();
             
-            // FLOW_MODE uses existing labeled nodes only (no internal nodes)
-            if (rows[row].outputMode == RowOutputMode.FLOW_MODE) {
-                Integer existingNodeNum = LabeledNodeElm.getByName(outputName);
-                if (existingNodeNum != null && existingNodeNum >= 0) {
-                    rows[row].labeledNodeNumber = existingNodeNum;
-                }
-                continue;
-            }
-
             // PARAM_MODE is computation-only (no nodes, no voltage source)
             if (rows[row].outputMode == RowOutputMode.PARAM_MODE) {
                 continue;
@@ -2297,9 +2046,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         state.lastIntOutput = initialValue;
         
         // Handle based on output mode
-        RowOutputMode mode = rows[row].outputMode;
         if (isMnaMode() && rows[row].rowVoltSource >= 0) {
-            // VOLTAGE mode in MNA: stamp the initial value via stampRightSide
             int vn = voltSource + rows[row].rowVoltSource + sim.getCircuitAnalyzer().getNodeList().size();
             sim.stampRightSide(vn, initialValue);
         }
@@ -2307,8 +2054,8 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         // Register immediately for other elements/rows to use
         registerOutputValue(row, initialValue);
         registerInitialSeedValue(row, initialValue);
-        if (mode == RowOutputMode.FLOW_MODE) {
-            registerFlowValue(row, initialValue);
+        if (isLegacyFlowCompatibleRow(row)) {
+            registerLegacyFlowValue(row, initialValue);
         }
         
         // Store initial value for re-stamping in subsequent iterations
@@ -2333,8 +2080,8 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
 
         registerOutputValue(row, initialValue);
-        if (rows[row].outputMode == RowOutputMode.FLOW_MODE) {
-            registerFlowValue(row, initialValue);
+        if (isLegacyFlowCompatibleRow(row)) {
+            registerLegacyFlowValue(row, initialValue);
         }
     }
 
@@ -2434,11 +2181,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
         
         for (int row = 0; row < rowCount; row++) {
-            // Register output as computed value
-            // Skip FLOW_MODE rows: their outputName is the source node name
-            // (e.g. "S1" from "S1->S2"), and registering the flow magnitude
-            // would clobber the main node value in ComputedValues.
-            if (rows[row].outputMode != RowOutputMode.FLOW_MODE && isValidOutputName(row)) {
+            if (isValidOutputName(row)) {
                 String name = rows[row].outputName.trim();
                 ComputedValues.setComputedValue(name, rows[row].outputValue, this);
                 ComputedValues.markComputedThisStep(name);
@@ -2446,11 +2189,8 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                     CirSim.console("  " + name + " = " + rows[row].outputValue);
                 }
             }
-            if (rows[row].outputMode == RowOutputMode.FLOW_MODE && isValidOutputName(row)) {
-                // Re-publish using the same signed dual-endpoint convention as doStep().
-                registerFlowValue(row, rows[row].outputValue);
-
-                // Use cached flow keys (computed once at stamp time)
+            if (isLegacyFlowCompatibleRow(row) && isValidOutputName(row)) {
+                registerLegacyFlowValue(row, rows[row].outputValue);
                 if (rows[row].cachedSourceFlowKey != null) {
                     ComputedValues.markComputedThisStep(rows[row].cachedSourceFlowKey);
                 }
@@ -2485,10 +2225,9 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         for (int row = 0; row < rowCount; row++) {
             rows[row].reset();
             
-            // Register initial values with ComputedValues
             registerOutputValue(row, rows[row].outputValue);
-            if (rows[row].outputMode == RowOutputMode.FLOW_MODE) {
-                registerFlowValue(row, rows[row].outputValue);
+            if (isLegacyFlowCompatibleRow(row)) {
+                registerLegacyFlowValue(row, rows[row].outputValue);
             }
         }
 
@@ -2545,11 +2284,11 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             sb.append(" ").append(CustomLogicModel.escape(rows[row].initialEquation != null ? rows[row].initialEquation : ""));
             // New: output mode and target node (target token kept empty for format compat)
             int modeOrdinal = 0;
-            if (rows[row].outputMode == RowOutputMode.FLOW_MODE) {
-                modeOrdinal = 1;
-            } else if (rows[row].outputMode == RowOutputMode.PARAM_MODE) {
+            if (rows[row].outputMode == RowOutputMode.PARAM_MODE) {
                 // Keep old on-disk numbering for backward compatibility.
                 modeOrdinal = 3;
+            } else if (isLegacyFlowCompatibleRow(row)) {
+                modeOrdinal = 1;
             }
             sb.append(" ").append(modeOrdinal);  // 0=VOLTAGE, 1=FLOW, 2=legacy STOCK, 3=PARAM
             sb.append(" ").append(CustomLogicModel.escape(""));  // target now in combined name
@@ -2672,7 +2411,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         if (hint != null && !hint.trim().isEmpty()) {
             arr[1] = hint;
         } else {
-            arr[1] = "Row " + (hoveredRow + 1) + ": " + getFlowDisplayName(hoveredRow);
+            arr[1] = "Row " + (hoveredRow + 1) + ": " + getLegacyFlowDisplayName(hoveredRow);
         }
         
         String classification = getRowClassification(hoveredRow);
@@ -2685,14 +2424,13 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             classDesc = "other";
         }
         
-        arr[2] = getFlowDisplayName(hoveredRow) + " = " + getUnitText(rows[hoveredRow].outputValue, "") + " [" + classDesc + "]";
+        arr[2] = getLegacyFlowDisplayName(hoveredRow) + " = " + getUnitText(rows[hoveredRow].outputValue, "") + " [" + classDesc + "]";
         String hintExpandedEquation = getHintExpandedEquationForDisplay(hoveredRow);
         arr[3] = "Equation: " + hintExpandedEquation;
         
         String initEq = rows[hoveredRow].initialEquation;
         
-        // For FLOW_MODE, show the full current source direction
-        if (rows[hoveredRow].outputMode == RowOutputMode.FLOW_MODE) {
+        if (isLegacyFlowCompatibleRow(hoveredRow)) {
             String sourceName = rows[hoveredRow].outputName;
             String targetName = rows[hoveredRow].targetNodeName;
             boolean singleNode = (targetName == null || targetName.trim().isEmpty() ||
@@ -2838,12 +2576,12 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     }
     
     /**
-     * Get the full flow-direction display name for a FLOW_MODE row.
+     * Get the legacy flow-direction display name for a migrated flow row.
      * Single-node: "gnd \u2192 S3", two-node: "S1 \u2192 S2".
-     * For non-FLOW rows, returns getUIDisplayOutputName().
+     * For ordinary rows, returns getUIDisplayOutputName().
      */
-    private String getFlowDisplayName(int row) {
-        if (rows[row].outputMode == RowOutputMode.FLOW_MODE) {
+    private String getLegacyFlowDisplayName(int row) {
+        if (isLegacyFlowCompatibleRow(row)) {
             String nodeName = rows[row].outputName;
             String targetName = rows[row].targetNodeName;
             boolean singleNode = (targetName == null || targetName.trim().isEmpty() ||
@@ -2865,7 +2603,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         
         int idx = 2;
         for (int row = 0; row < rowCount && idx < arr.length - 1; row++) {
-            arr[idx++] = getFlowDisplayName(row) + " = " + getUnitText(rows[row].outputValue, "");
+            arr[idx++] = getLegacyFlowDisplayName(row) + " = " + getUnitText(rows[row].outputValue, "");
         }
     }
     
@@ -3050,9 +2788,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     public double getDisplayValue(int row) {
         if (row < 0 || row >= MAX_ROWS) return 0.0;
 
-        // For non-flow rows, prefer the converged registry value so UI display is
-        // stable and matches other table displays using converged evaluation.
-        if (rows[row].outputMode != RowOutputMode.FLOW_MODE && isValidOutputName(row)) {
+        if (isValidOutputName(row)) {
             Double computed = ComputedValues.getConvergedValue(rows[row].outputName.trim());
             if (computed != null) {
                 return computed.doubleValue();
@@ -3602,7 +3338,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
     }
     
-    /** Get target node name for a row (used in FLOW_MODE). */
+    /** Get target node metadata for a row (legacy flow compatibility). */
     public String getTargetNodeName(int row) {
         return (row >= 0 && row < MAX_ROWS && rows[row].targetNodeName != null) ? rows[row].targetNodeName : "";
     }

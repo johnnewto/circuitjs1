@@ -303,12 +303,7 @@ public class EquationTableMarkdownDebugDialog {
         md.append("| Row Count | ").append(sourceTable.getRowCount()).append(" |\n");
         md.append("| MNA Mode | ").append(sourceTable.isMnaMode() ? "**YES** (Electrical)" : "NO (Pure Computational)").append(" |\n");
         md.append("| nonLinear() | ").append(sourceTable.nonLinear() ? "true" : "false").append(" |\n");
-        int currentSourceCount = 0;
-        for (int row = 0; row < sourceTable.getRowCount(); row++) {
-            if (sourceTable.getOutputMode(row) == RowOutputMode.FLOW_MODE)
-                currentSourceCount++;
-        }
-        md.append("| Current Sources | ").append(currentSourceCount).append(" |\n");
+        md.append("| Current Sources | 0 |\n");
         md.append("| Voltage Sources | ").append(sourceTable.getVoltageSourceCount()).append(" |\n");
         md.append("| Internal Nodes | ").append(sourceTable.getInternalNodeCount()).append(" |\n");
         md.append("| Post Count | ").append(sourceTable.getPostCount()).append(" |\n");
@@ -387,7 +382,6 @@ public class EquationTableMarkdownDebugDialog {
             // Mode icon
             String modeStr;
             switch (mode) {
-                case FLOW_MODE: modeStr = "FLOW"; break;
                 case PARAM_MODE: modeStr = "PARAM"; break;
                 default: modeStr = "VOLTAGE"; break;
             }
@@ -457,9 +451,9 @@ public class EquationTableMarkdownDebugDialog {
                     voltageInfo = CircuitElm.getUnitText(sim.getLabeledNodeVoltageForUi(sourceName), "V");
                 }
 
-                if (sourceTable.getOutputMode(row) == RowOutputMode.FLOW_MODE) {
-                    String targetName = sourceTable.getTargetNodeName(row);
-                    if (targetName == null || targetName.trim().isEmpty() || targetName.trim().equalsIgnoreCase("gnd")) {
+                String targetName = sourceTable.getTargetNodeName(row);
+                if (targetName != null && !targetName.trim().isEmpty()) {
+                    if (targetName.trim().equalsIgnoreCase("gnd")) {
                         nodeInfo = nodeInfo + " → gnd";
                     } else {
                         Integer targetNode = LabeledNodeElm.getByName(targetName.trim());
@@ -544,7 +538,7 @@ public class EquationTableMarkdownDebugDialog {
 
     /**
      * Append all ComputedValues currently in the global registry,
-        * including *.flow entries published by EquationTable FLOW_MODE rows.
+        * including *.flow entries published for legacy flow-compatibility aliases.
      */
     private void appendAllComputedValuesInfo(StringBuilder md) {
         md.append("## All ComputedValues (Global)\n\n");

@@ -790,15 +790,8 @@ class EquationTableRenderer {
         // Draw output mode icon (only for non-VOLTAGE_MODE modes)
         RowOutputMode mode = table.getOutputMode(row);
         if (mode != RowOutputMode.VOLTAGE_MODE) {
-            String modeIcon;
-            Color modeColor;
-            if (mode == RowOutputMode.FLOW_MODE) {
-                modeIcon = "I→";  // Flow mode
-                modeColor = new Color(200, 50, 50);  // Red for flow
-            } else {
-                modeIcon = "P";  // Parameter mode
-                modeColor = new Color(120, 80, 180);  // Purple for parameter
-            }
+            String modeIcon = "P";
+            Color modeColor = new Color(120, 80, 180);
             int modeIconSize = table.getOpsize() == 1 ? 9 : 11;
             g.setFont(new Font("SansSerif", Font.BOLD, modeIconSize));
             g.setColor(modeColor);
@@ -838,12 +831,7 @@ class EquationTableRenderer {
         // Draw current value on right side with voltage coloring
         double outputValue = table.getDisplayValue(row);
         String valueText = CircuitElm.getShortUnitText(outputValue, "");
-        boolean showFlowUnits = (mode == RowOutputMode.FLOW_MODE);
-        if (showFlowUnits) {
-            valueText += " F";
-        } else {
-            valueText += " V";
-        }
+        valueText += " V";
         int valueWidth = (int) g.context.measureText(valueText).getWidth();
 
         int initWidth = getInitialIndicatorWidth(g, row);

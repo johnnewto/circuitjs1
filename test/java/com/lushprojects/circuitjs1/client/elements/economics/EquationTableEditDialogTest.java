@@ -13,7 +13,7 @@ class EquationTableEditDialogTest {
     void convertParamRowsToVoltageChangesOnlyEditableParamRows() {
         EquationTableElm.RowOutputMode[] modes = new EquationTableElm.RowOutputMode[] {
             EquationTableElm.RowOutputMode.PARAM_MODE,
-            EquationTableElm.RowOutputMode.FLOW_MODE,
+            EquationTableElm.RowOutputMode.VOLTAGE_MODE,
             EquationTableElm.RowOutputMode.PARAM_MODE,
             EquationTableElm.RowOutputMode.VOLTAGE_MODE,
             EquationTableElm.RowOutputMode.PARAM_MODE
@@ -30,7 +30,7 @@ class EquationTableEditDialogTest {
 
         assertEquals(2, converted);
         assertEquals(EquationTableElm.RowOutputMode.VOLTAGE_MODE, modes[0]);
-        assertEquals(EquationTableElm.RowOutputMode.FLOW_MODE, modes[1]);
+        assertEquals(EquationTableElm.RowOutputMode.VOLTAGE_MODE, modes[1]);
         assertEquals(EquationTableElm.RowOutputMode.PARAM_MODE, modes[2]);
         assertEquals(EquationTableElm.RowOutputMode.VOLTAGE_MODE, modes[3]);
         assertEquals(EquationTableElm.RowOutputMode.VOLTAGE_MODE, modes[4]);

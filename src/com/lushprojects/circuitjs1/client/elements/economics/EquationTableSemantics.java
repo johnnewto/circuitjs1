@@ -25,7 +25,7 @@ public final class EquationTableSemantics {
     }
 
     public static boolean isFlowMode(EquationTableElm.RowOutputMode mode) {
-        return mode == EquationTableElm.RowOutputMode.FLOW_MODE;
+        return false;
     }
 
     public static boolean isParamMode(EquationTableElm.RowOutputMode mode) {
@@ -35,9 +35,6 @@ public final class EquationTableSemantics {
     public static boolean rowForcesNonLinear(EquationTableElm.RowOutputMode mode, boolean isCommentRow) {
         if (isCommentRow) {
             return false;
-        }
-        if (isFlowMode(mode)) {
-            return true;
         }
         return true;
     }

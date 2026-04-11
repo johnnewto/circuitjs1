@@ -376,15 +376,6 @@ public class EquationTableEditDialog extends Dialog {
         });
         buttonPanel.add(referenceButton);
 
-        Button toggleModesButton = new Button("Toggle Flow↔Voltage");
-        toggleModesButton.setTitle("Toggle row modes: Flow ↔ Voltage (Param/comment rows unchanged)");
-        toggleModesButton.addClickHandler(new ClickHandler() {
-            public void onClick(ClickEvent event) {
-                toggleFlowVoltageModes();
-            }
-        });
-        buttonPanel.add(toggleModesButton);
-
         Button classifyModesButton = new Button("Classify Modes");
         classifyModesButton.setTitle("Set cyclic rows to Voltage and non-cyclic rows to Param");
         classifyModesButton.addClickHandler(new ClickHandler() {
@@ -567,25 +558,17 @@ public class EquationTableEditDialog extends Dialog {
         // Output mode dropdown
         final ListBox modeBox = new ListBox();
         modeBox.addItem("Voltage", "VOLTAGE_MODE");
-        modeBox.addItem("Flow\u2192", "FLOW_MODE");
         modeBox.addItem("Param", "PARAM_MODE");
         // Set selected based on current mode
         RowOutputMode currentMode = outputModes[row];
-        if (currentMode == RowOutputMode.FLOW_MODE) modeBox.setSelectedIndex(1);
-        else if (currentMode == RowOutputMode.PARAM_MODE) modeBox.setSelectedIndex(2);
+        if (currentMode == RowOutputMode.PARAM_MODE) modeBox.setSelectedIndex(1);
         else modeBox.setSelectedIndex(0);
         modeBox.addChangeHandler(new ChangeHandler() {
             public void onChange(ChangeEvent event) {
                 String val = modeBox.getSelectedValue();
-                RowOutputMode previousMode = outputModes[row];
-                if ("FLOW_MODE".equals(val)) outputModes[row] = RowOutputMode.FLOW_MODE;
-                else if ("PARAM_MODE".equals(val)) outputModes[row] = RowOutputMode.PARAM_MODE;
+                if ("PARAM_MODE".equals(val)) outputModes[row] = RowOutputMode.PARAM_MODE;
                 else outputModes[row] = RowOutputMode.VOLTAGE_MODE;
-                if (outputModes[row] == RowOutputMode.FLOW_MODE && previousMode != RowOutputMode.FLOW_MODE) {
-                    shuntResistances[row] = EquationTableElm.getDefaultFlowShuntResistance();
-                }
                 markChanged();
-                // Enable/disable shunt field based on mode
                 updateModeFields(gridRow, outputModes[row]);
             }
         });
@@ -631,7 +614,7 @@ public class EquationTableEditDialog extends Dialog {
 
         updateModeLockUi(row, gridRow, modeBox, outputNameBox, equationBox, initialBox);
         
-        // Mode parameter value (FLOW: Shunt R)
+        // Legacy shunt value retained only for backward-compatible row metadata.
         final TextBox capBox = new TextBox();
         capBox.setText(CircuitElm.getShortUnitText(shuntResistances[row], ""));
         capBox.setWidth("50px");
@@ -641,9 +624,7 @@ public class EquationTableEditDialog extends Dialog {
                 try {
                     shuntResistances[row] = EditDialog.parseUnits(capBox.getText());
                     if (shuntResistances[row] <= 0) {
-                        shuntResistances[row] = (outputModes[row] == RowOutputMode.FLOW_MODE)
-                            ? EquationTableElm.getDefaultFlowShuntResistance()
-                            : 1.0;
+                        shuntResistances[row] = EquationTableElm.getDefaultFlowShuntResistance();
                     }
                     capBox.getElement().getStyle().clearBackgroundColor();
                     markChanged();
@@ -658,8 +639,7 @@ public class EquationTableEditDialog extends Dialog {
             }
         });
         addSelectAllOnFocus(capBox);
-        // Enable for FLOW only
-        capBox.setEnabled(outputModes[row] == RowOutputMode.FLOW_MODE);
+        capBox.setEnabled(false);
         editGrid.setWidget(gridRow, COL_SHUNT_RESISTANCE, capBox);
         
         // Integration method dropdown (legacy; disabled)
@@ -767,7 +747,7 @@ public class EquationTableEditDialog extends Dialog {
      *   <li>All stock names from {@link StockFlowRegistry}.</li>
      *   <li>All labeled node names from {@link LabeledNodeElm}.</li>
      *   <li>Output names defined in this table's current row data.</li>
-     *   <li>FLOW computed-value keys ({@code <name>.flow}) for FLOW rows.</li>
+     *   <li>Legacy-flow computed-value keys ({@code <name>.flow}) for compatibility rows.</li>
      *   <li>Built-in math functions: sin, cos, tan, exp, log, sqrt, abs, etc.</li>
      *   <li>Constants: {@code pi}, {@code t}.</li>
      * </ol>
@@ -803,10 +783,10 @@ public class EquationTableEditDialog extends Dialog {
                 completions.add(outputNames[i]);
             }
 
-            // Add FLOW computed-value keys (<output>.flow) so equations can
-            // reference FLOW magnitudes without clobbering stock/node values.
+            // Add legacy-flow computed-value keys (<output>.flow) so equations can
+            // reference compatibility aliases without clobbering stock/node values.
             String[] parts = EquationTableElm.parseCombinedName(outputNames[i]);
-            String flowKey = EquationTableElm.getFlowComputedKeyForName(parts[0]);
+            String flowKey = EquationTableElm.getLegacyFlowComputedKeyForName(parts[0]);
             if (flowKey != null && !completions.contains(flowKey)) {
                 completions.add(flowKey);
             }
@@ -833,7 +813,7 @@ public class EquationTableEditDialog extends Dialog {
         Widget integWidget = editGrid.getWidget(gridRow, COL_INTEGRATION);
         
         if (capWidget instanceof TextBox) {
-            ((TextBox) capWidget).setEnabled(mode == RowOutputMode.FLOW_MODE);
+            ((TextBox) capWidget).setEnabled(false);
             ((TextBox) capWidget).setTitle(getModeParamTooltip(mode));
         }
         if (integWidget instanceof ListBox) {
@@ -842,24 +822,16 @@ public class EquationTableEditDialog extends Dialog {
     }
 
     /**
-    * Return a context-sensitive tooltip for the Shunt R field based on the current mode.
-     *
-     * <ul>
-     *   <li>FLOW_MODE  — field controls shunt resistance to ground.</li>
-     *   <li>PARAM/VOLTAGE — field is not applicable and the tooltip says so.</li>
-     * </ul>
+    * Return a tooltip for the legacy shunt-resistance field.
      *
      * @param mode Current row output mode.
     * @return Tooltip string for the shunt-resistance field.
      */
     private String getModeParamTooltip(RowOutputMode mode) {
-        if (mode == RowOutputMode.FLOW_MODE) {
-            return "Shunt R for FLOW. Lower values create a real electrical load to ground.";
-        }
         if (mode == RowOutputMode.PARAM_MODE) {
-            return "Not used in PARAM mode.";
+            return "Not used in Param mode.";
         }
-        return "Not used in VOLTAGE mode.";
+        return "Legacy shunt value retained only for compatibility with old flow rows.";
     }
 
     //=========================================================================
@@ -1135,41 +1107,6 @@ public class EquationTableEditDialog extends Dialog {
         
         String direction = (fromIndex < toIndex) ? "down" : "up";
         setStatus("Row " + (fromIndex + 1) + " moved " + direction);
-        markChanged();
-        populateGrid();
-    }
-
-    /**
-     * Toggle row output modes globally: FLOW_MODE ↔ VOLTAGE_MODE.
-     * PARAM_MODE and comment rows are left unchanged.
-     */
-    private void toggleFlowVoltageModes() {
-        int switchedToFlow = 0;
-        int switchedToVoltage = 0;
-
-        for (int row = 0; row < rowCount; row++) {
-            if (isCommentRowByInput(row)) {
-                continue;
-            }
-
-            if (outputModes[row] == RowOutputMode.FLOW_MODE) {
-                outputModes[row] = RowOutputMode.VOLTAGE_MODE;
-                switchedToVoltage++;
-            } else if (outputModes[row] == RowOutputMode.VOLTAGE_MODE) {
-                outputModes[row] = RowOutputMode.FLOW_MODE;
-                if (shuntResistances[row] <= 0) {
-                    shuntResistances[row] = EquationTableElm.getDefaultFlowShuntResistance();
-                }
-                switchedToFlow++;
-            }
-        }
-
-        if (switchedToFlow == 0 && switchedToVoltage == 0) {
-            setStatus("No Flow/Voltage rows to toggle");
-            return;
-        }
-
-        setStatus("Toggled modes: " + switchedToFlow + " to Flow, " + switchedToVoltage + " to Voltage");
         markChanged();
         populateGrid();
     }

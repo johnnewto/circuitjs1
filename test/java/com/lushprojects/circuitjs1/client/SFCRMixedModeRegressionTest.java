@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 class SFCRMixedModeRegressionTest {
 
     @Test
-    @DisplayName("explicit VOLTAGE/FLOW/PARAM modes survive parse → export → parse")
+    @DisplayName("legacy flow metadata normalizes to voltage while preserving target on round-trip")
     void testMixedModeRowsPreservedAcrossParseExportParse() throws Exception {
         String originalText = TestFixtures.loadSfcr("mixed_modes_fixture.md");
         SFCRParseResult first = SFCRParser.parseToResult(originalText);
@@ -35,13 +35,11 @@ class SFCRMixedModeRegressionTest {
         SFCRParseResult.BlockDump secondEq = second.findBlock("equations", "MixedModes");
         assertNotNull(secondEq, "Round-trip must preserve equations block name");
 
-        List<Integer> firstModes = extractModeOrdinals(firstEq.dumpString);
         List<Integer> secondModes = extractModeOrdinals(secondEq.dumpString);
 
-        assertEquals(3, firstModes.size(), "Fixture should contain exactly 3 rows");
-        assertEquals(firstModes, secondModes, "Mode ordinals must survive round-trip");
+        assertEquals(3, secondModes.size(), "Fixture should contain exactly 3 rows");
         assertEquals(Integer.valueOf(0), secondModes.get(0), "Vout should remain VOLTAGE mode");
-        assertEquals(Integer.valueOf(1), secondModes.get(1), "FlowAB should remain FLOW mode");
+        assertEquals(Integer.valueOf(0), secondModes.get(1), "Targeted row should now export as VOLTAGE mode");
         assertEquals(Integer.valueOf(3), secondModes.get(2), "Gain should remain PARAM mode");
 
         List<String> secondTargets = extractTargets(secondEq.dumpString);

@@ -59,7 +59,7 @@ import java.util.Set;
 public class ComputedValues {
     private static final String FLOW_KEY_SUFFIX = ".flow";
 
-    // Cache for getFlowComputedKeyForName() — avoids repeated StringBuilder
+    // Cache for legacy .flow compatibility keys — avoids repeated StringBuilder
     // allocation and char-by-char sanitization for the same output name.
     // Cleared in clearComputedValues() and resetForTesting().
     private static HashMap<String, String> flowKeyCache;
@@ -515,10 +515,10 @@ public class ComputedValues {
     }
 
     /**
-     * Build parser-safe ComputedValues key for a FLOW output name.
+     * Build parser-safe ComputedValues key for a legacy-flow compatibility name.
      * Key format: <sanitizedOutputName>.flow
      */
-    public static String getFlowComputedKeyForName(String outputName) {
+    public static String getLegacyFlowComputedKeyForName(String outputName) {
         if (outputName == null || outputName.trim().isEmpty()) {
             return null;
         }
@@ -563,10 +563,18 @@ public class ComputedValues {
     }
 
     /**
-     * Get current/subiteration FLOW value for a label name from *.flow namespace.
+     * @deprecated Use {@link #getLegacyFlowComputedKeyForName(String)}. Kept for compatibility only.
+     */
+    @Deprecated
+    public static String getFlowComputedKeyForName(String outputName) {
+        return getLegacyFlowComputedKeyForName(outputName);
+    }
+
+    /**
+     * Get current/subiteration legacy-flow compatibility value for a label name from *.flow namespace.
      */
     public static Double getComputedFlowValue(String outputName) {
-        String key = getFlowComputedKeyForName(outputName);
+        String key = getLegacyFlowComputedKeyForName(outputName);
         if (key == null) {
             return null;
         }
@@ -574,10 +582,10 @@ public class ComputedValues {
     }
 
     /**
-     * Get converged/stable FLOW value for a label name from *.flow namespace.
+     * Get converged/stable legacy-flow compatibility value for a label name from *.flow namespace.
      */
     public static Double getConvergedFlowValue(String outputName) {
-        String key = getFlowComputedKeyForName(outputName);
+        String key = getLegacyFlowComputedKeyForName(outputName);
         if (key == null) {
             return null;
         }

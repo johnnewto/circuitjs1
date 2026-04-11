@@ -106,10 +106,10 @@ height: 320
 @end
 
 @equations reg_ext x=704 y=24
-  r ~ 0.025 ; mode=flow ; sliderValue=0
-  G_S ~ 20 ; mode=flow ; sliderValue=0
-  G_N ~ 20 ; mode=flow ; sliderValue=0
-  mu_N ~ 0.15 ; mode=flow ; sliderValue=0
+  r ~ 0.025 ; mode=voltage ; sliderValue=0
+  G_S ~ 20 ; mode=voltage ; sliderValue=0
+  G_N ~ 20 ; mode=voltage ; sliderValue=0
+  mu_N ~ 0.15 ; mode=voltage ; sliderValue=0
   mu_S ~ 0.15 ; mode=voltage ; sliderValue=0
   \alpha_1_N ~ 0.7 ; mode=voltage ; sliderValue=0
   \alpha_1_S ~ 0.7 ; mode=voltage ; sliderValue=0

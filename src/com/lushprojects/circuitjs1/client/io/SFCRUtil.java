@@ -118,7 +118,7 @@ public class SFCRUtil {
 
     /**
      * Parse a row mode string to its ordinal value.
-     * Returns 0 for voltage mode, 1 for flow/stock mode, 3 for param mode.
+     * Returns 0 for voltage mode, 1 for legacy flow/stock compatibility, 3 for param mode.
      */
     public static int parseModeOrdinal(String mode) {
         if (mode == null) return 0;
@@ -152,7 +152,6 @@ public class SFCRUtil {
     public static String formatEquationRowMode(EquationTableElm.RowOutputMode mode) {
         if (mode == null) return "voltage";
         switch (mode) {
-            case FLOW_MODE:  return "flow";
             case PARAM_MODE: return "param";
             default:         return "voltage";
         }
@@ -162,8 +161,8 @@ public class SFCRUtil {
     public static EquationTableElm.RowOutputMode parseEquationRowMode(String mode) {
         if (mode == null) return EquationTableElm.RowOutputMode.VOLTAGE_MODE;
         String m = mode.trim().toLowerCase();
-        if (m.equals("flow")  || m.equals("flow_mode"))                         return EquationTableElm.RowOutputMode.FLOW_MODE;
-        if (m.equals("stock") || m.equals("stock_mode"))                        return EquationTableElm.RowOutputMode.FLOW_MODE;
+        if (m.equals("flow")  || m.equals("flow_mode"))                         return EquationTableElm.RowOutputMode.VOLTAGE_MODE;
+        if (m.equals("stock") || m.equals("stock_mode"))                        return EquationTableElm.RowOutputMode.VOLTAGE_MODE;
         if (m.equals("param") || m.equals("parameter") || m.equals("param_mode")) return EquationTableElm.RowOutputMode.PARAM_MODE;
         return EquationTableElm.RowOutputMode.VOLTAGE_MODE;
     }

@@ -33,11 +33,8 @@ import java.util.LinkedHashSet;
  * <h3>Supported Modes</h3>
  * <ul>
  *   <li><b>VOLTAGE_MODE</b>: linearizes {@code Vout = f(…)} on the voltage-source equation row.</li>
- *   <li><b>FLOW_MODE</b>: linearizes flow at both source and target endpoint KCL rows,
- *       using opposite sign conventions (source: {@code matrixSign=+1}, target: {@code matrixSign=-1}).</li>
  * </ul>
- * STOCK_MODE uses a capacitor companion model that is already linear in voltage;
- * PARAM_MODE has no MNA rows; neither requires Jacobian support.
+ * PARAM_MODE has no MNA rows and does not require Jacobian support.
  *
  * <h3>Eligibility Guardrails</h3>
  * Jacobian stamping is skipped when:
@@ -54,7 +51,6 @@ import java.util.LinkedHashSet;
  * All methods are stateless utilities; the class has no instance state and cannot be constructed.
  *
  * @see EquationTableElm#stampVoltageModeNewtonJacobian
- * @see EquationTableElm#stampFlowModeNewtonJacobian
  */
 final class EquationTableJacobianHelper {
     private EquationTableJacobianHelper() {}
@@ -190,50 +186,6 @@ final class EquationTableJacobianHelper {
         }
         if (rowData.rowVoltSource < 0) {
             return "ineligible: no voltage source row";
-        }
-        if (hasStatefulOperators(rowData.equation)) {
-            return "ineligible: stateful expr";
-        }
-        if (rowData.compiledExpr.hasSamePeriodReferenceInDenominator()) {
-            return "ineligible: same-period ref in denominator";
-        }
-        return null;
-    }
-
-    /**
-     * Check whether FLOW_MODE Jacobian stamping is eligible for a given row.
-     *
-     * Mirrors {@link #getVoltageModeIneligibilityReason} but for FLOW_MODE rows.
-     * Additional FLOW-mode-specific condition: both {@code sourceNode} and
-     * {@code targetNode} must have been resolved to valid (non-negative) node numbers.
-     * If either endpoint is still unresolved, Jacobian stamping is deferred.
-     *
-     * @param table      The equation table owning this row.
-     * @param rowData    Runtime state for the row being evaluated.
-     * @param sourceNode MNA node number for the flow source endpoint (≥ 0 if resolved).
-     * @param targetNode MNA node number for the flow target endpoint (≥ 0 if resolved).
-     * @return {@code null} if eligible; a non-null reason string if ineligible.
-     */
-    static String getFlowModeIneligibilityReason(EquationTableElm table, EquationTableElm.EquationRow rowData,
-            int sourceNode, int targetNode) {
-        CirSim sim = CirSim.getInstance();
-        if (!table.isMnaMode()) {
-            return "ineligible: table not in mna mode";
-        }
-        if (sim == null) {
-            return "ineligible: sim unavailable";
-        }
-        if (!sim.equationTableNewtonJacobianEnabled) {
-            return "ineligible: global toggle off";
-        }
-        if (rowData.outputMode != EquationTableElm.RowOutputMode.FLOW_MODE) {
-            return "ineligible: row mode is " + rowData.outputMode;
-        }
-        if (rowData.compiledExpr == null) {
-            return "ineligible: missing compiled expr";
-        }
-        if (sourceNode < 0 || targetNode < 0) {
-            return "ineligible: unresolved flow endpoints";
         }
         if (hasStatefulOperators(rowData.equation)) {
             return "ineligible: stateful expr";

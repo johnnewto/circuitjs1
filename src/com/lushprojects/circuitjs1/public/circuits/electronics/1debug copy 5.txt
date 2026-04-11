@@ -12,10 +12,10 @@
 @end
 
 @equations Current.Demo x=-16 y=-24
-  S1->S2 ~ 1 ; mode=flow ; slider=b ; sliderValue=0.5  # hint3
-  S3->S4 ~ 1 ; mode=flow ; slider=b ; sliderValue=0.5  # hint2
-  S1 ~ 0 ; mode=stock ; slider=c ; sliderValue=0.5  # hint3
-  S2 ~ 0 ; mode=stock ; slider=d ; sliderValue=0.5  # hint4
+  S1->S2 ~ 1 ; mode=voltage ; slider=b ; sliderValue=0.5  # hint3
+  S3->S4 ~ 1 ; mode=voltage ; slider=b ; sliderValue=0.5  # hint2
+  S1 ~ 0 ; mode=voltage ; slider=c ; sliderValue=0.5  # hint3
+  S2 ~ 0 ; mode=voltage ; slider=d ; sliderValue=0.5  # hint4
 @end
 
 @matrix SFC_Flow_Demo x=-472 y=-192

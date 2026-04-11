@@ -14,7 +14,7 @@ Stock-flow table elements now use a **mixed architecture**. Some are pure comput
 
 #### MNA-backed with hidden node wiring
 - `GodlyTableElm`: `getPostCount()==0` (no visible posts) but it allocates internal nodes/voltage sources and stamps matrix entries to drive master stocks.
-- `EquationTableElm` when `equationTableMnaMode=true`: stamps per-row outputs (`VOLTAGE_MODE`, `FLOW_MODE`, `PARAM_MODE`) using voltage/current-source behavior.
+- `EquationTableElm` when `equationTableMnaMode=true`: stamps active `VOLTAGE_MODE` rows electrically and publishes `PARAM_MODE` rows. Legacy flow inputs normalize to voltage behavior and may still emit `.flow` aliases.
 
 ### Benefits
 
