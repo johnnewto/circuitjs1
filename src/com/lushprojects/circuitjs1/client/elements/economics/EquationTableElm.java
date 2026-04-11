@@ -342,10 +342,6 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                     " (" + rows[row].outputName + "): eq=" + rows[row].equation + " val=" + equationValue);
             }
             
-            checkEquationConvergence(row, equationValue);
-            rows[row].lastOutputValue = equationValue;
-            rows[row].outputValue = equationValue;
-            
             // Guard against NaN/Infinity poisoning the MNA matrix solve.
             // This can happen during initialization when referenced variables
             // (e.g. Nfe) haven't been evaluated yet in this subiteration,
@@ -355,6 +351,10 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 equationValue = 0;
                 sim.setConverged(false);
             }
+            
+            checkEquationConvergence(row, equationValue);
+            rows[row].lastOutputValue = equationValue;
+            rows[row].outputValue = equationValue;
             
             // MNA mode: stamp to matrix
             if (isMnaMode() && rows[row].rowVoltSource >= 0) {
@@ -444,16 +444,16 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 rows[row].shuntResistance
             );
             
-            rows[row].flowValue = flowValue;
-            checkEquationConvergence(row, flowValue);
-            rows[row].lastOutputValue = flowValue;
-            rows[row].outputValue = flowValue;
-            
             // Guard against NaN/Infinity (same as VoltageModeHandler)
             if (Double.isNaN(flowValue) || Double.isInfinite(flowValue)) {
                 flowValue = 0;
                 sim.setConverged(false);
             }
+            
+            rows[row].flowValue = flowValue;
+            checkEquationConvergence(row, flowValue);
+            rows[row].lastOutputValue = flowValue;
+            rows[row].outputValue = flowValue;
             
             registerFlowValue(row, flowValue);
 
