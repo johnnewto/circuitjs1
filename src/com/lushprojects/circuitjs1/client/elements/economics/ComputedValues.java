@@ -23,6 +23,7 @@ import com.lushprojects.circuitjs1.client.*;
 import com.lushprojects.circuitjs1.client.util.*;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -57,6 +58,11 @@ import java.util.Set;
  */
 public class ComputedValues {
     private static final String FLOW_KEY_SUFFIX = ".flow";
+
+    // Cache for getFlowComputedKeyForName() — avoids repeated StringBuilder
+    // allocation and char-by-char sanitization for the same output name.
+    // Cleared in clearComputedValues() and resetForTesting().
+    private static HashMap<String, String> flowKeyCache;
     
     // Storage for current values: name -> value (stable, read from during doStep)
     private static HashMap<String, Double> computedValues;
@@ -102,6 +108,10 @@ public class ComputedValues {
 
     // target name -> (source key -> override)
     private static HashMap<String, HashMap<String, ScenarioOverride>> scenarioOverrides;
+
+    // Fast short-circuit flag: true only when at least one active override exists.
+    // Avoids HashMap lookup in the common case (no overrides).
+    private static boolean hasActiveOverrides = false;
     
     // Initialize storage if needed
     private static void ensureInitialized() {
@@ -277,7 +287,7 @@ public class ComputedValues {
             // Legacy immediate mode: write directly to current values
             computedValues.put(name, value);
         }
-        
+
         if (computingTable != null) {
             computedByTable.put(name, computingTable);
         }
@@ -327,6 +337,7 @@ public class ComputedValues {
         if (baseValue == null) {
             return null;
         }
+        if (!hasActiveOverrides) return baseValue;
         return applyScenarioOverrides(name, baseValue.doubleValue());
     }
 
@@ -358,6 +369,9 @@ public class ComputedValues {
         override.mode = mode;
         override.magnitude = magnitude;
         override.active = active;
+
+        // Update the fast short-circuit flag
+        recomputeHasActiveOverrides();
     }
 
     public static void clearScenarioOverride(String targetName, String sourceKey) {
@@ -374,9 +388,30 @@ public class ComputedValues {
         if (bySource.isEmpty()) {
             scenarioOverrides.remove(targetName.trim());
         }
+        // Update the fast short-circuit flag
+        recomputeHasActiveOverrides();
+    }
+
+    /** Recompute the hasActiveOverrides flag by scanning all registered overrides. */
+    private static void recomputeHasActiveOverrides() {
+        if (scenarioOverrides == null || scenarioOverrides.isEmpty()) {
+            hasActiveOverrides = false;
+            return;
+        }
+        for (HashMap<String, ScenarioOverride> bySource : scenarioOverrides.values()) {
+            if (bySource == null) continue;
+            for (ScenarioOverride ov : bySource.values()) {
+                if (ov != null && ov.active) {
+                    hasActiveOverrides = true;
+                    return;
+                }
+            }
+        }
+        hasActiveOverrides = false;
     }
 
     private static Double applyScenarioOverrides(String targetName, double baseValue) {
+        // Caller already checked hasActiveOverrides, so we know there's work to do.
         if (scenarioOverrides == null || targetName == null) {
             return Double.valueOf(baseValue);
         }
@@ -429,11 +464,11 @@ public class ComputedValues {
         
         ensureInitialized();
         
-        // Move all pending values to current
-        for (String name : pendingValues.keySet()) {
-            Double value = pendingValues.get(name);
+        // Move all pending values to current (use entrySet to avoid double lookup)
+        for (Map.Entry<String, Double> entry : pendingValues.entrySet()) {
+            Double value = entry.getValue();
             if (value != null) {
-                computedValues.put(name, value);
+                computedValues.put(entry.getKey(), value);
             }
         }
         // Don't clear pending - keep for reference during timestep
@@ -466,6 +501,7 @@ public class ComputedValues {
         // First try converged values (stable)
         Double converged = convergedValues.get(name);
         if (converged != null) {
+            if (!hasActiveOverrides) return converged;
             return applyScenarioOverrides(name, converged.doubleValue());
         }
         
@@ -474,6 +510,7 @@ public class ComputedValues {
         if (current == null) {
             return null;
         }
+        if (!hasActiveOverrides) return current;
         return applyScenarioOverrides(name, current.doubleValue());
     }
 
@@ -487,6 +524,13 @@ public class ComputedValues {
         }
 
         String name = outputName.trim();
+
+        // Fast-path: return cached result if available
+        if (flowKeyCache != null) {
+            String cached = flowKeyCache.get(name);
+            if (cached != null) return cached;
+        }
+
         StringBuilder safe = new StringBuilder();
         for (int i = 0; i < name.length(); i++) {
             char ch = name.charAt(i);
@@ -498,13 +542,24 @@ public class ComputedValues {
         }
 
         if (safe.length() == 0) {
+            // Cache even the degenerate case
+            if (flowKeyCache == null) flowKeyCache = new HashMap<String, String>();
+            flowKeyCache.put(name, FLOW_KEY_SUFFIX);
             return FLOW_KEY_SUFFIX;
         }
         if (safe.charAt(0) == '.') {
             safe.insert(0, '_');
         }
 
-        return safe.toString() + FLOW_KEY_SUFFIX;
+        String result = safe.toString() + FLOW_KEY_SUFFIX;
+
+        // Store in cache for subsequent lookups
+        if (flowKeyCache == null) {
+            flowKeyCache = new HashMap<String, String>();
+        }
+        flowKeyCache.put(name, result);
+
+        return result;
     }
 
     /**
@@ -625,11 +680,11 @@ public class ComputedValues {
         laggedConvergedValues.clear();
         laggedConvergedValues.putAll(convergedValues);
         
-        // Copy all current values to converged values
-        for (String name : computedValues.keySet()) {
-            Double value = computedValues.get(name);
+        // Copy all current values to converged values (use entrySet to avoid double lookup)
+        for (Map.Entry<String, Double> entry : computedValues.entrySet()) {
+            Double value = entry.getValue();
             if (value != null) {
-                convergedValues.put(name, value);
+                convergedValues.put(entry.getKey(), value);
             }
         }
     }
@@ -642,7 +697,7 @@ public class ComputedValues {
      */
     public static boolean hasComputedValue(String name) {
         if (name == null || computedValues == null) return false;
-        return computedValues.containsKey(name) && computedValues.get(name) != null;
+        return computedValues.get(name) != null;
     }
     
     /**
@@ -713,6 +768,10 @@ public class ComputedValues {
         if (scenarioOverrides != null) {
             scenarioOverrides.clear();
         }
+        hasActiveOverrides = false;
+        if (flowKeyCache != null) {
+            flowKeyCache.clear();
+        }
     }
 
     public static void resetForTesting() {
@@ -745,6 +804,10 @@ public class ComputedValues {
         }
         if (scenarioOverrides != null) {
             scenarioOverrides.clear();
+        }
+        hasActiveOverrides = false;
+        if (flowKeyCache != null) {
+            flowKeyCache.clear();
         }
         doubleBufferingEnabled = true;
     }

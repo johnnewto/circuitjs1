@@ -147,6 +147,16 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     public static boolean isCommentRowName(String name) {
         return name != null && name.trim().startsWith("#");
     }
+
+    /**
+     * Refresh cached name flags on all rows. Call after bulk outputName
+     * changes (e.g. loading from file, setEditValue).
+     */
+    private void refreshCachedNameFlags() {
+        for (int row = 0; row < rowCount; row++) {
+            rows[row].updateCachedNameFlags();
+        }
+    }
     
     //=============================================================================
     // ROW DATA CLASS - Consolidates all per-row state
@@ -190,6 +200,16 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         int targetNodeNumber;
         double flowValue;
         
+        // Cached flow keys (computed once at stamp/setup time, avoids per-call StringBuilder)
+        String cachedSourceFlowKey;
+        String cachedTargetFlowKey;
+
+        // Cached name properties (set via updateCachedNameFlags() when outputName changes).
+        // Avoids repeated trim()/startsWith("#")/isEmpty() in the hot doStep loop.
+        String  cachedTrimmedName;     // outputName.trim(), or "" if null
+        boolean cachedIsComment;       // isCommentRowName(outputName)
+        boolean cachedIsValidOutput;   // non-null, non-empty trimmed, non-comment
+        
         // MNA node tracking
         int labeledNodeNumber;
         int rowVoltSource;
@@ -209,8 +229,43 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             targetNodeNumber = -1;
             labeledNodeNumber = -1;
             rowVoltSource = -1;
+            cachedSourceFlowKey = null;
+            cachedTargetFlowKey = null;
+            updateCachedNameFlags();
             lastNewtonJacobianApplied = false;
             lastNewtonJacobianStatus = "not attempted";
+        }
+
+        /** Recompute cached trimmed-name flags from current outputName. */
+        void updateCachedNameFlags() {
+            if (outputName != null) {
+                cachedTrimmedName = outputName.trim();
+                cachedIsComment = cachedTrimmedName.startsWith("#");
+                cachedIsValidOutput = !cachedTrimmedName.isEmpty() && !cachedIsComment;
+            } else {
+                cachedTrimmedName = "";
+                cachedIsComment = false;
+                cachedIsValidOutput = false;
+            }
+        }
+
+        /** Recompute cached flow keys from current output/target names. */
+        void updateCachedFlowKeys() {
+            if (outputName != null && !outputName.trim().isEmpty()) {
+                cachedSourceFlowKey = ComputedValues.getFlowComputedKeyForName(outputName.trim());
+            } else {
+                cachedSourceFlowKey = null;
+            }
+            if (targetNodeName != null) {
+                String trimmed = targetNodeName.trim();
+                if (!trimmed.isEmpty() && !trimmed.equalsIgnoreCase("gnd")) {
+                    cachedTargetFlowKey = ComputedValues.getFlowComputedKeyForName(trimmed);
+                } else {
+                    cachedTargetFlowKey = null;
+                }
+            } else {
+                cachedTargetFlowKey = null;
+            }
         }
 
         void invalidateBroydenState() {
@@ -601,6 +656,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         rows[1].outputName = "Y2";
         rows[1].equation = "0";
         
+        refreshCachedNameFlags();
         setSize(sim.smallGridCheckItem.getState() ? 1 : 2);
         parseAllEquations();
         allocNodes();
@@ -768,6 +824,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
         
         setSize((f & FLAG_SMALL) != 0 ? 1 : 2);
+        refreshCachedNameFlags();
         parseAllEquations();
         allocNodes();
         
@@ -861,20 +918,35 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 String outputName = rows[row].outputName.trim();
                 currentComputedNames.add(outputName);
 
+                // Pre-register _init / init suffix names so they get slots
+                // (used by last() fallback and sfcr V[-1] initialization).
+                if (rows[row].compiledInitialExpr != null) {
+                    currentComputedNames.add(outputName + "_init");
+                    currentComputedNames.add(outputName + "init");
+                }
+
                 if (rows[row].outputMode == RowOutputMode.FLOW_MODE) {
-                    String sourceFlowKey = getFlowComputedKeyForName(outputName);
+                    // Use cached flow keys if available, fall back to computation
+                    String sourceFlowKey = rows[row].cachedSourceFlowKey;
+                    if (sourceFlowKey == null) sourceFlowKey = getFlowComputedKeyForName(outputName);
                     if (sourceFlowKey != null && !sourceFlowKey.isEmpty()) {
                         currentComputedNames.add(sourceFlowKey);
                     }
 
-                    String targetName = rows[row].targetNodeName;
-                    if (targetName != null) {
-                        String trimmedTarget = targetName.trim();
-                        boolean hasNonGroundTarget = !trimmedTarget.isEmpty() && !trimmedTarget.equalsIgnoreCase("gnd");
-                        if (hasNonGroundTarget) {
-                            String targetFlowKey = getFlowComputedKeyForName(trimmedTarget);
-                            if (targetFlowKey != null && !targetFlowKey.isEmpty()) {
-                                currentComputedNames.add(targetFlowKey);
+                    String targetFlowKey = rows[row].cachedTargetFlowKey;
+                    if (targetFlowKey != null && !targetFlowKey.isEmpty()) {
+                        currentComputedNames.add(targetFlowKey);
+                    } else {
+                        // Fallback for pre-cache path
+                        String targetName = rows[row].targetNodeName;
+                        if (targetName != null) {
+                            String trimmedTarget = targetName.trim();
+                            boolean hasNonGroundTarget = !trimmedTarget.isEmpty() && !trimmedTarget.equalsIgnoreCase("gnd");
+                            if (hasNonGroundTarget) {
+                                targetFlowKey = getFlowComputedKeyForName(trimmedTarget);
+                                if (targetFlowKey != null && !targetFlowKey.isEmpty()) {
+                                    currentComputedNames.add(targetFlowKey);
+                                }
                             }
                         }
                     }
@@ -1220,7 +1292,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         dependencyGraphDirty = false;
         dependencyGraphCache = (sim == null)
                 ? EquationDependencyGraph.buildFromDefinitions(new java.util.ArrayList<EquationDependencyGraph.Definition>(), false)
-                : EquationDependencyGraph.build(sim, false, false, false);
+            : EquationDependencyGraph.build(sim, true, false, false);
         return dependencyGraphCache;
     }
 
@@ -1468,8 +1540,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * @return true if the output name is usable
      */
     private boolean isValidOutputName(int row) {
-        String name = rows[row].outputName;
-        return name != null && !name.trim().isEmpty() && !isCommentRowName(name);
+        return rows[row].cachedIsValidOutput;
     }
 
     /** Ensure row has an ExprState allocated before evaluation/state updates. */
@@ -1499,8 +1570,8 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
      * @param value Value to register
      */
     private void registerOutputValue(int row, double value) {
-        if (isValidOutputName(row)) {
-            ComputedValues.setComputedValue(rows[row].outputName.trim(), value, this);
+        if (rows[row].cachedIsValidOutput) {
+            ComputedValues.setComputedValue(rows[row].cachedTrimmedName, value, this);
         }
     }
 
@@ -1524,14 +1595,9 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
     private void registerFlowValue(int row, double value) {
         if (!isValidOutputName(row)) return;
 
-        String sourceName = rows[row].outputName.trim();
-        String sourceKey = getFlowComputedKeyForName(sourceName);
-        String targetName = rows[row].targetNodeName;
-        boolean hasNonGroundTarget = false;
-        if (targetName != null) {
-            String trimmedTarget = targetName.trim();
-            hasNonGroundTarget = !trimmedTarget.isEmpty() && !trimmedTarget.equalsIgnoreCase("gnd");
-        }
+        String sourceKey = rows[row].cachedSourceFlowKey;
+        String targetKey = rows[row].cachedTargetFlowKey;
+        boolean hasNonGroundTarget = targetKey != null;
 
         // Two-node flows publish source as negative (outflow), otherwise source-only.
         double sourcePublished = hasNonGroundTarget ? -value : value;
@@ -1540,11 +1606,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         }
 
         if (hasNonGroundTarget) {
-            String trimmedTarget = targetName.trim();
-            String targetKey = getFlowComputedKeyForName(trimmedTarget);
-            if (targetKey != null) {
-                ComputedValues.setComputedValue(targetKey, value);
-            }
+            ComputedValues.setComputedValue(targetKey, value);
         }
     }
 
@@ -2035,6 +2097,11 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
         // Explicit pre-registration during analysis/stamp so expected keys are
         // available before the first startIteration()/doStep() pass.
         ensureNameRegistriesUpToDate();
+
+        // Pre-compute and cache flow keys for all rows (avoids per-call StringBuilder)
+        for (int row = 0; row < rowCount; row++) {
+            rows[row].updateCachedFlowKeys();
+        }
         
         if (!isMnaMode()) {
             // Pure computational mode: no matrix stamping needed.
@@ -2133,6 +2200,11 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             // Normal timestep: evaluate via mode handler
             getHandler(rows[row].outputMode).evaluate(row);
         }
+
+        // Individual handlers (VoltageModeHandler, FlowModeHandler, ParamModeHandler)
+        // always call registerOutputValue/registerFlowValue at the end of evaluate().
+        // The only early-return path is when compiledExpr==null, in which case there
+        // is nothing to publish. So a redundant batchPublish pass is not needed.
     }
 
     /**
@@ -2361,20 +2433,12 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 // Re-publish using the same signed dual-endpoint convention as doStep().
                 registerFlowValue(row, rows[row].outputValue);
 
-                String sourceKey = getFlowComputedKeyForName(rows[row].outputName.trim());
-                if (sourceKey != null) {
-                    ComputedValues.markComputedThisStep(sourceKey);
+                // Use cached flow keys (computed once at stamp time)
+                if (rows[row].cachedSourceFlowKey != null) {
+                    ComputedValues.markComputedThisStep(rows[row].cachedSourceFlowKey);
                 }
-
-                String targetName = rows[row].targetNodeName;
-                if (targetName != null) {
-                    String trimmedTarget = targetName.trim();
-                    if (!trimmedTarget.isEmpty() && !trimmedTarget.equalsIgnoreCase("gnd")) {
-                        String targetKey = getFlowComputedKeyForName(trimmedTarget);
-                        if (targetKey != null) {
-                            ComputedValues.markComputedThisStep(targetKey);
-                        }
-                    }
+                if (rows[row].cachedTargetFlowKey != null) {
+                    ComputedValues.markComputedThisStep(rows[row].cachedTargetFlowKey);
                 }
             }
             
@@ -3381,6 +3445,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 }
                 rows[row].outputName = trimmed;
                 rows[row].targetNodeName = "";
+                rows[row].updateCachedNameFlags();
                 markNameRegistriesDirty();
                 return;
             }
@@ -3392,6 +3457,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
                 // No "->" in name: clear target (combined format with no target)
                 rows[row].targetNodeName = "";
             }
+            rows[row].updateCachedNameFlags();
             markNameRegistriesDirty();
         }
     }
@@ -3496,7 +3562,7 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
 
     /** True if this row is a non-simulating comment row. */
     public boolean isCommentRow(int row) {
-        return row >= 0 && row < MAX_ROWS && isCommentRowName(rows[row].outputName);
+        return row >= 0 && row < MAX_ROWS && rows[row].cachedIsComment;
     }
 
     /** Returns comment text without the leading '#', or empty string for non-comment rows. */

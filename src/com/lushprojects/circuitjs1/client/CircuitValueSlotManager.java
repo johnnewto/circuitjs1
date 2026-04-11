@@ -19,6 +19,20 @@ import com.lushprojects.circuitjs1.client.elements.electronics.wiring.LabeledNod
 final class CircuitValueSlotManager {
     private final CirSim sim;
 
+    // Per-slot resolution strategy (computed once at build time to avoid repeated HashMap probes)
+    private static final int RESOLVE_COMPUTED = 0;      // ComputedValues.getComputedValue(name)
+    private static final int RESOLVE_FLOW = 1;           // ComputedValues.getComputedFlowValue(name)
+    private static final int RESOLVE_LABELED_NODE = 2;   // nodeVoltages[nodeIndex]
+    private static final int RESOLVE_PARAMETER = 3;      // ComputedValues.getComputedValue(name) (parameter priority)
+    private static final int RESOLVE_FLOW_OR_VALUE = 4;  // ComputedValues.getComputedFlowOrValue(name) (non-MNA mode)
+
+    /** Resolution type for each slot, indexed by slot number. */
+    private int[] slotResolveType;
+    /** For RESOLVE_LABELED_NODE slots, the (node-1) index into nodeVoltages[]. */
+    private int[] slotNodeIndex;
+    /** For RESOLVE_FLOW slots, the pre-computed flow key string. */
+    private String[] slotFlowKey;
+
     CircuitValueSlotManager(CirSim sim) {
         this.sim = sim;
     }
@@ -59,18 +73,105 @@ final class CircuitValueSlotManager {
         for (Map.Entry<String, Integer> e : sim.nameToSlot.entrySet())
             sim.slotNames[e.getValue()] = e.getKey();
 
+        // Build per-slot resolution strategy to avoid repeated HashMap probes at runtime
+        buildSlotResolutionStrategies(slot);
+
         sim.getVariableHistoryStore().refreshTrackedVariableNames(sim);
 
         syncAllSlots();
     }
 
+    /** Determine the fastest resolution path for each slot, once at analysis time. */
+    private void buildSlotResolutionStrategies(int slotCount) {
+        slotResolveType = new int[slotCount];
+        slotNodeIndex = new int[slotCount];
+        slotFlowKey = new String[slotCount];
+
+        boolean mnaMode = sim.isEquationTableMnaMode();
+        for (int s = 0; s < slotCount; s++) {
+            String name = sim.slotNames[s];
+            if (name == null) {
+                slotResolveType[s] = RESOLVE_COMPUTED;
+                continue;
+            }
+            if (!mnaMode) {
+                slotResolveType[s] = RESOLVE_FLOW_OR_VALUE;
+                continue;
+            }
+            // MNA mode: determine the primary resolution path for this name
+            if (ComputedValues.isParameterName(name)) {
+                slotResolveType[s] = RESOLVE_PARAMETER;
+            } else {
+                // Check if this name has a flow value
+                String flowKey = ComputedValues.getFlowComputedKeyForName(name);
+                if (flowKey != null && ComputedValues.hasComputedValue(flowKey)) {
+                    slotResolveType[s] = RESOLVE_FLOW;
+                    slotFlowKey[s] = flowKey;
+                } else if (name.endsWith(".flow")) {
+                    // Name IS a flow key itself — resolve directly
+                    slotResolveType[s] = RESOLVE_COMPUTED;
+                } else {
+                    Integer node = LabeledNodeElm.getByName(name);
+                    if (node != null && node != 0) {
+                        slotResolveType[s] = RESOLVE_LABELED_NODE;
+                        slotNodeIndex[s] = node.intValue() - 1;
+                    } else {
+                        slotResolveType[s] = RESOLVE_COMPUTED;
+                    }
+                }
+            }
+        }
+    }
+
     void syncAllSlots() {
         if (sim.circuitVariables == null || sim.slotNames == null)
             return;
-        for (int s = 0; s < sim.slotNames.length; s++) {
-            String name = sim.slotNames[s];
-            if (name != null)
-                sim.circuitVariables[s] = resolveSlotValue(name);
+        final int len = sim.slotNames.length;
+        final double[] vars = sim.circuitVariables;
+        final String[] names = sim.slotNames;
+        final double[] nodeVoltages = (sim.getSolverMatrixState() != null) ? sim.getSolverMatrixState().nodeVoltages : null;
+
+        for (int s = 0; s < len; s++) {
+            String name = names[s];
+            if (name == null) continue;
+            vars[s] = resolveSlotFast(s, name, nodeVoltages);
+        }
+    }
+
+    /** Fast slot resolution using pre-computed strategy. Falls back to full resolution if needed. */
+    private double resolveSlotFast(int s, String name, double[] nodeVoltages) {
+        if (slotResolveType == null) return resolveSlotValue(name);
+        switch (slotResolveType[s]) {
+        case RESOLVE_PARAMETER: {
+            Double v = ComputedValues.getComputedValue(name);
+            if (v != null) return v;
+            // Parameter may not have a value yet; fall through to full resolution
+            return resolveSlotValue(name);
+        }
+        case RESOLVE_FLOW: {
+            String fk = slotFlowKey[s];
+            if (fk != null) {
+                Double fv = ComputedValues.getComputedValue(fk);
+                if (fv != null) return fv;
+            }
+            // Flow key not resolved yet; fall through
+            return resolveSlotValue(name);
+        }
+        case RESOLVE_LABELED_NODE: {
+            int ni = slotNodeIndex[s];
+            if (nodeVoltages != null && ni >= 0 && ni < nodeVoltages.length)
+                return nodeVoltages[ni];
+            return resolveSlotValue(name);
+        }
+        case RESOLVE_FLOW_OR_VALUE: {
+            Double cv = ComputedValues.getComputedFlowOrValue(name);
+            return cv != null ? cv : 0.0;
+        }
+        case RESOLVE_COMPUTED:
+        default: {
+            Double cv = ComputedValues.getComputedValue(name);
+            return cv != null ? cv : 0.0;
+        }
         }
     }
 

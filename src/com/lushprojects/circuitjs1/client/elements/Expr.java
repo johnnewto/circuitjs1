@@ -367,6 +367,35 @@ public class Expr {
 		type = E_NODE_REF;
 	    }
 	}
+	// (Re-)cache resolution keys for E_LAST / E_LAG child references
+	cacheResolutionKeys();
+    }
+
+    /**
+     * Pre-compute and cache the resolution strings that E_LAST and E_LAG use
+     * during eval().  Called once from resolveGSlot() so the hot eval() path
+     * avoids repeated string concatenation and getFlowComputedKeyForName()
+     * StringBuilder allocations.
+     */
+    private void cacheResolutionKeys() {
+	if (children != null) {
+	    for (int i = 0; i < children.size(); i++)
+		children.get(i).cacheResolutionKeys();
+	}
+	if ((type == E_LAST || type == E_LAG) && children != null && children.size() > 0) {
+	    Expr leftChild = children.firstElement();
+	    if (leftChild != null && (leftChild.type == E_NODE_REF || leftChild.type == E_GSLOT)
+		    && leftChild.nodeName != null) {
+		String vn = leftChild.nodeName;
+		resolutionKeysCached = true;
+		cachedIsParam = ComputedValues.isParameterName(vn);
+		cachedFlowKey = ComputedValues.getFlowComputedKeyForName(vn);
+		cachedInitUnderscore = vn + "_init";
+		cachedInitNoUnderscore = vn + "init";
+	    } else {
+		resolutionKeysCached = false;
+	    }
+	}
     }
 
     /**
@@ -867,11 +896,16 @@ public class Expr {
 	    // otherwise Hs = last(Hs) + 1 would increment on every subiteration!
 	    if (left != null && (left.type == E_NODE_REF || left.type == E_GSLOT) && left.nodeName != null) {
 		String varName = left.nodeName;
+		// Use cached resolution keys when available (populated by resolveGSlot)
+		boolean isParam  = resolutionKeysCached ? cachedIsParam : ComputedValues.isParameterName(varName);
+		String  flowKey  = resolutionKeysCached ? cachedFlowKey : ComputedValues.getFlowComputedKeyForName(varName);
+		String  initKey1 = resolutionKeysCached ? cachedInitUnderscore : (varName + "_init");
+		String  initKey2 = resolutionKeysCached ? cachedInitNoUnderscore : (varName + "init");
 		// Mirror same-period node-reference precedence as closely as possible:
 		// parameter-style names first, then FLOW values, then base labeled-node/
 		// computed values. This avoids last(X) accidentally reading a labeled node
 		// voltage when X currently resolves to X.flow in FLOW mode.
-		if (ComputedValues.isParameterName(varName)) {
+		if (isParam) {
 		    Double laggedParameterValue = getLaggedByMode(varName, context);
 		    if (laggedParameterValue != null) {
 			return laggedParameterValue.doubleValue();
@@ -879,7 +913,6 @@ public class Expr {
 		}
 		// FLOW rows publish under a dedicated *.flow namespace. Prefer the
 		// lagged flow key before the base name so last(X) matches X in flow mode.
-		String flowKey = ComputedValues.getFlowComputedKeyForName(varName);
 		if (flowKey != null) {
 		    Double laggedFlowValue = getLaggedByMode(flowKey, context);
 		    if (laggedFlowValue != null) {
@@ -893,12 +926,12 @@ public class Expr {
 		}
 		// No converged value yet (first timestep) - try X_init as fallback
 		// This matches sfcr behavior where initial values are used for V[-1] in period 1
-		Double initValue = ComputedValues.getComputedValue(varName + "_init");
+		Double initValue = ComputedValues.getComputedValue(initKey1);
 		if (initValue != null) {
 		    return initValue.doubleValue();
 		}
 		// Also try without underscore (e.g., Vinit for V)
-		initValue = ComputedValues.getComputedValue(varName + "init");
+		initValue = ComputedValues.getComputedValue(initKey2);
 		if (initValue != null) {
 		    return initValue.doubleValue();
 		}
@@ -928,36 +961,17 @@ public class Expr {
 	    // Check if we have enough history
 	    double targetTime = es.t - delay;
 	    
-	    // Get initial value for this variable (if available)
+	    // Get initial value for this variable (if available).
+	    // Use cached init-key strings when available (populated by resolveGSlot).
 	    double initValue = 0.0;
-	    if (left.type == E_NODE_REF && left.nodeName != null) {
-		String varName = left.nodeName;
-		// Try X_init first
-		Double iv = ComputedValues.getComputedValue(varName + "_init");
-		if (iv != null) {
-		    initValue = iv.doubleValue();
-		} else {
-		    // Also try without underscore (e.g., Vinit for V)
-		    iv = ComputedValues.getComputedValue(varName + "init");
-		    if (iv != null) {
-			initValue = iv.doubleValue();
-		    }
-		}
-	    }
-	    
-	    // MOVING AVERAGE FILTER: Always use a moving average over one period.
-	    // This smooths out discontinuities by averaging all samples within
-	    // the window [t-delay, t]. For timestep=0.01 and delay=1, averages ~100 points.
-	    // During the first period (t < delay), initValue is used to pad the window.
 	    if ((left.type == E_NODE_REF || left.type == E_GSLOT) && left.nodeName != null) {
-		String varName = left.nodeName;
-		// Try X_init first
-		Double iv = ComputedValues.getComputedValue(varName + "_init");
+		String ik1 = resolutionKeysCached ? cachedInitUnderscore : (left.nodeName + "_init");
+		String ik2 = resolutionKeysCached ? cachedInitNoUnderscore : (left.nodeName + "init");
+		Double iv = ComputedValues.getComputedValue(ik1);
 		if (iv != null) {
 		    initValue = iv.doubleValue();
 		} else {
-		    // Also try without underscore (e.g., Vinit for V)
-		    iv = ComputedValues.getComputedValue(varName + "init");
+		    iv = ComputedValues.getComputedValue(ik2);
 		    if (iv != null) {
 			initValue = iv.doubleValue();
 		    }
@@ -1211,6 +1225,15 @@ public class Expr {
     public int type;
     private int lagIndex = -1; // Buffer index for E_LAG expressions, assigned at parse time
 	int smoothIndex = -1; // State index for E_SMOOTH expressions, assigned at parse time
+
+    // Cached resolution strings for E_LAST and E_LAG — populated once in
+    // cacheResolutionKeys() so eval() avoids repeated HashMap lookups, string
+    // concatenation, and getFlowComputedKeyForName() StringBuilder allocations.
+    private boolean resolutionKeysCached;
+    private boolean cachedIsParam;       // ComputedValues.isParameterName(nodeName)
+    private String  cachedFlowKey;       // ComputedValues.getFlowComputedKeyForName(nodeName)
+    private String  cachedInitUnderscore; // nodeName + "_init"
+    private String  cachedInitNoUnderscore; // nodeName + "init"
     static final int E_ADD = 1;
     static final int E_SUB = 2;
     static final int E_T = 3;

@@ -45,9 +45,11 @@ public class ExprState {
 	pendingDiffInput = 0;
 	diffInitialized = false;
 	
-	// Initialize lag buffers
-	lagBufferValues = new double[MAX_LAG_BUFFERS][LAG_BUFFER_SIZE];
-	lagBufferTimes = new double[MAX_LAG_BUFFERS][LAG_BUFFER_SIZE];
+	// Lightweight lag/smooth metadata arrays (10 elements each ~ 80-160 bytes).
+	// The heavy circular-buffer arrays (lagBufferValues, lagBufferTimes: 10x10000
+	// doubles each = ~1.6 MB) are lazy-allocated in ensureLagBuffers() on first use.
+	lagBufferValues = null;
+	lagBufferTimes = null;
 	lagBufferHead = new int[MAX_LAG_BUFFERS];
 	lagBufferCount = new int[MAX_LAG_BUFFERS];
 	lagPendingValue = new double[MAX_LAG_BUFFERS];
@@ -59,13 +61,21 @@ public class ExprState {
 	}
 	lagBufferIndex = 0;
 
-	// Initialize smooth() states
+	// Smooth state: small arrays, always allocated.
 	smoothLastOutput = new double[MAX_SMOOTH_STATES];
 	smoothPendingOutput = new double[MAX_SMOOTH_STATES];
 	smoothLastCommitTime = new double[MAX_SMOOTH_STATES];
 	smoothInitialized = new boolean[MAX_SMOOTH_STATES];
 	for (int i = 0; i < MAX_SMOOTH_STATES; i++) {
 	    smoothLastCommitTime[i] = -1;
+	}
+    }
+
+    /** Lazy-allocate the heavy lag circular-buffer arrays on first use. */
+    private void ensureLagBuffers() {
+	if (lagBufferValues == null) {
+	    lagBufferValues = new double[MAX_LAG_BUFFERS][LAG_BUFFER_SIZE];
+	    lagBufferTimes = new double[MAX_LAG_BUFFERS][LAG_BUFFER_SIZE];
 	}
     }
     
@@ -87,7 +97,9 @@ public class ExprState {
 	pendingDiffInput = 0;
 	diffInitialized = false;
 	
-	// Reset lag buffers
+	// Reset lag buffers (metadata only; heavy arrays freed to save memory)
+	lagBufferValues = null;
+	lagBufferTimes = null;
 	for (int i = 0; i < MAX_LAG_BUFFERS; i++) {
 	    lagBufferHead[i] = 0;
 	    lagBufferCount[i] = 0;
@@ -118,6 +130,8 @@ public class ExprState {
 	// Commit lag buffer values
 	for (int i = 0; i < MAX_LAG_BUFFERS; i++) {
 	    if (t != lagLastCommitTime[i] && lagLastCommitTime[i] >= 0) {
+		// Lazy-allocate heavy circular buffers on first actual commit
+		ensureLagBuffers();
 		// Add new entry to circular buffer
 		lagBufferValues[i][lagBufferHead[i]] = lagPendingValue[i];
 		lagBufferTimes[i][lagBufferHead[i]] = t;
@@ -147,7 +161,8 @@ public class ExprState {
     // Get the value from the lag buffer at time (currentTime - delay)
     // Returns the input value if not enough history exists
     double getLaggedValue(int bufferIdx, double delay, double currentValue) {
-	if (bufferIdx >= MAX_LAG_BUFFERS || lagBufferCount[bufferIdx] == 0) {
+	if (bufferIdx >= MAX_LAG_BUFFERS || lagBufferCount[bufferIdx] == 0
+		|| lagBufferValues == null) {
 	    return currentValue;  // No history yet
 	}
 	
@@ -191,7 +206,8 @@ public class ExprState {
     // Averages all samples within the time window [currentTime - delay, currentTime]
     // For timestep=0.01 and delay=1, this averages ~100 points
     double getLaggedMovingAverage(int bufferIdx, double delay, double initValue) {
-	if (bufferIdx >= MAX_LAG_BUFFERS || lagBufferCount[bufferIdx] == 0) {
+	if (bufferIdx >= MAX_LAG_BUFFERS || lagBufferCount[bufferIdx] == 0
+		|| lagBufferValues == null) {
 	    return initValue;  // No history yet
 	}
 	
