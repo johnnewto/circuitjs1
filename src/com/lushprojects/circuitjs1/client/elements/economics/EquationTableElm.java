@@ -346,6 +346,16 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             rows[row].lastOutputValue = equationValue;
             rows[row].outputValue = equationValue;
             
+            // Guard against NaN/Infinity poisoning the MNA matrix solve.
+            // This can happen during initialization when referenced variables
+            // (e.g. Nfe) haven't been evaluated yet in this subiteration,
+            // leading to 0/0 or log(0) expressions. Use 0 as a safe default
+            // and force another subiteration to get proper values.
+            if (Double.isNaN(equationValue) || Double.isInfinite(equationValue)) {
+                equationValue = 0;
+                sim.setConverged(false);
+            }
+            
             // MNA mode: stamp to matrix
             if (isMnaMode() && rows[row].rowVoltSource >= 0) {
                 int vn = voltSource + rows[row].rowVoltSource + sim.getCircuitAnalyzer().getNodeList().size();
@@ -438,6 +448,13 @@ public class EquationTableElm extends CircuitElm implements MouseWheelHandler {
             checkEquationConvergence(row, flowValue);
             rows[row].lastOutputValue = flowValue;
             rows[row].outputValue = flowValue;
+            
+            // Guard against NaN/Infinity (same as VoltageModeHandler)
+            if (Double.isNaN(flowValue) || Double.isInfinite(flowValue)) {
+                flowValue = 0;
+                sim.setConverged(false);
+            }
+            
             registerFlowValue(row, flowValue);
 
             if (!stampFlowModeNewtonJacobian(row, state, flowValue, sourceNode, targetNode)) {
