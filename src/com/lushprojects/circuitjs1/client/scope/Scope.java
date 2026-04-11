@@ -352,7 +352,7 @@ public class Scope {
      * @param full true to discard all old data
      */
     public void resetGraph(boolean full) {
-    	resetGraph(full, true);  // Default: clear history
+    	resetGraph(full, full);  // soft reset preserves history; full reset clears it
     }
 
     public void resetGraphForEmbedded(boolean full) {
@@ -676,15 +676,18 @@ public class Scope {
 	if (drawFromZero || plots == null || plots.isEmpty()) {
 	    return;
 	}
-	double bucketInterval = sim.getMaxTimeStep() * speed;
-	if (bucketInterval <= 0) {
-	    return;
-	}
 	double windowEndTime = sim.getTime();
 	for (int i = 0; i < plots.size(); i++) {
 	    ScopePlot plot = plots.get(i);
 	    VariableHistoryStore.SeriesSnapshot snapshot = getVariableHistorySnapshotForPlot(plot);
 	    if (snapshot == null || snapshot.size() == 0) {
+		continue;
+	    }
+	    double bucketInterval = snapshot.averageSampleInterval();
+	    if (bucketInterval <= 0) {
+		bucketInterval = sim.getMaxTimeStep() * speed;
+	    }
+	    if (bucketInterval <= 0) {
 		continue;
 	    }
 	    plot.preloadFromHistory(snapshot, windowEndTime, bucketInterval);
@@ -1152,7 +1155,11 @@ public class Scope {
     }
 
     boolean isUsingHistoryInStandardModeForRender(ScopePlot plot) {
-	return plot != null && plot.isUsingPreloadedHistory();
+	if (drawFromZero || plot == null || plot.isUsingPreloadedHistory()) {
+	    return false;
+	}
+	VariableHistoryStore.SeriesSnapshot snapshot = getVariableHistorySnapshotForPlot(plot);
+	return snapshot != null && snapshot.size() > 0 && plot.samplesCaptured <= 1;
     }
 
     private VariableHistoryStore.SeriesSnapshot getHistorySnapshotForPlotIndex(int plotIndex) {
@@ -2421,7 +2428,7 @@ public class Scope {
 
     boolean shouldAutoAddCurrentPlot(CircuitElm ce) {
 	return ce != null &&
-		sim.dotsCheckItem.getState() &&
+		sim.dotsCheckItem != null && sim.dotsCheckItem.getState() &&
 		!(ce instanceof OutputElm ||
 		  ce instanceof LogicOutputElm ||
 		  ce instanceof AudioOutputElm ||
