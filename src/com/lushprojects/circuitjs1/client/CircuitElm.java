@@ -94,6 +94,9 @@ public abstract class CircuitElm implements Editable {
     // scratch points for convenience
     protected static Point ps1, ps2;
     
+    // cached center point between lead1 and lead2, computed in calcLeads()
+    protected Point centerLead;
+    
     protected static CirSim sim;
     static public Color whiteColor, lightGrayColor, selectColor, connectedColor;
     static public Color positiveColor, negativeColor, neutralColor, currentColor;
@@ -428,10 +431,12 @@ public abstract class CircuitElm implements Editable {
 	if (dn < len || len == 0) {
 	    lead1 = point1;
 	    lead2 = point2;
+	    centerLead = interpPoint(point1, point2, 0.5);
 	    return;
 	}
 	lead1 = interpPoint(point1, point2, (dn-len)/(2*dn));
 	lead2 = interpPoint(point1, point2, (dn+len)/(2*dn));
+	centerLead = interpPoint(lead1, lead2, 0.5);
     }
 
     // adjust leads so that the point exactly between them is a grid point (so we can place a terminal there)
@@ -874,17 +879,10 @@ public abstract class CircuitElm implements Editable {
     boolean isCenteredText() { return false; }
     
     public void drawCenteredText(Graphics g, String s, int x, int y, boolean cx) {
-	// FontMetrics fm = g.getFontMetrics();
-	//int w = fm.stringWidth(s);
-//    	int w=0;
-//	if (cx)
-//	    x -= w/2;
-//	g.drawString(s, x, y+fm.getAscent()/2);
-//	adjustBbox(x, y-fm.getAscent()/2,
-//		   x+w, y+fm.getAscent()/2+fm.getDescent());
     	int w=(int)g.context.measureText(s).getWidth();
     	int h2=(int)g.currentFontSize/2;
-		g.save();
+		String prevBaseline = g.getTextBaseline();
+		String prevAlign = g.getTextAlign();
 		g.context.setTextBaseline("middle");
 		if (cx) {
 			g.context.setTextAlign("center");
@@ -892,11 +890,10 @@ public abstract class CircuitElm implements Editable {
 		} else {
 			adjustBbox(x,y-h2,x+w,y+h2);
 		}
-		
-		if (cx)
-			g.context.setTextAlign("center");
 		g.drawString(s, x, y);
-		g.restore();
+		// Restore only changed properties instead of full canvas save/restore
+		g.context.setTextBaseline(prevBaseline);
+		g.context.setTextAlign(prevAlign);
     }
     
     // draw component values (number of resistor ohms, etc).  hs = offset
@@ -936,7 +933,7 @@ public abstract class CircuitElm implements Editable {
 	}
         int w=(int)g.context.measureText(str).getWidth();
         int h=(int)g.currentFontSize;
-        g.save();
+        String prevBaseline = g.getTextBaseline();
         g.context.setTextBaseline("middle");
         int x = pt2.x, y = pt2.y;
         if (pt1.y != pt2.y) {
@@ -950,7 +947,7 @@ public abstract class CircuitElm implements Editable {
         }
         g.drawString(str, x, y);
         adjustBbox(x, y-h/2, x+w, y+h/2);
-        g.restore();
+        g.context.setTextBaseline(prevBaseline);
 	if (lineOver) {
 	    int ya = y-h/2-1;
 	    g.drawLine(x, ya, x+w, ya);

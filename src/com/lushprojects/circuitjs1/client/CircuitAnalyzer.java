@@ -479,6 +479,8 @@ public class CircuitAnalyzer {
 
     void stampCircuit() {
         int i;
+        // Cache node list size for stamp methods to avoid repeated accessor chain
+        sim.getMatrixStamper().cacheNodeListSize();
         int matrixSize = nodeList.size() - 1 + sim.voltageSourceCount;
         sim.getSolverMatrixState().circuitMatrix = new double[matrixSize][matrixSize];
         sim.getSolverMatrixState().circuitRightSide = new double[matrixSize];

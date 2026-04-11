@@ -116,8 +116,7 @@ public class SubtracterElm extends CircuitElm {
         
         // Draw "−" label
         g.setFont(labelFont);
-        Point center = interpPoint(lead1, lead2, 0.5);
-        drawCenteredText(g, "\u2212", center.x, center.y, true);
+        drawCenteredText(g, "\u2212", centerLead.x, centerLead.y, true);
         
         // Draw current dots
         curcount = updateDotCount(current, curcount);

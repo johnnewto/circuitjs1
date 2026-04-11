@@ -33,6 +33,7 @@ public class Graphics {
 	@JsType(isNative = true, namespace = JsPackage.GLOBAL, name = "Object")
 	private static class ContextLike {
 		@JsProperty(name = "textAlign") native String getTextAlign();
+		@JsProperty(name = "textBaseline") native String getTextBaseline();
 		@JsMethod(name = "setLineDash") native void setLineDashNative(double[] pattern);
 		@JsProperty(name = "letterSpacing") native public void setLetterSpacing(String spacing);
 	}
@@ -134,6 +135,11 @@ public class Graphics {
 	  }
 	  
 	  public void drawString(String str, int x, int y) {
+	      // Fast path: most strings have no backslash, underscore, or caret
+	      if (str.indexOf('\\') < 0 && str.indexOf('_') < 0 && str.indexOf('^') < 0) {
+	          context.fillText(str, x, y);
+	          return;
+	      }
 	      // Convert Greek symbols (e.g., \beta -> β) before rendering
 	      String converted = Locale.convertGreekSymbols(str);
 	      
@@ -235,9 +241,17 @@ public class Graphics {
 	  /**
 	   * Get current text alignment setting
 	   */
-	  private String getTextAlign() {
+	  public String getTextAlign() {
 	      String align = ((ContextLike) (Object) context).getTextAlign();
 	      return align == null ? "left" : align;
+	  }
+
+	  /**
+	   * Get current text baseline setting
+	   */
+	  public String getTextBaseline() {
+	      String baseline = ((ContextLike) (Object) context).getTextBaseline();
+	      return baseline == null ? "alphabetic" : baseline;
 	  }
 	  
 	  /**

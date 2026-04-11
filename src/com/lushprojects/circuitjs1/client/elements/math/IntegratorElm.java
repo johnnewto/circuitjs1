@@ -171,9 +171,8 @@ public class IntegratorElm extends CircuitElm {
         
         // Draw "∫dt" label
         g.setFont(labelFont);
-        Point center = interpPoint(lead1, lead2, 0.5);
         g.setColor(needsHighlight() ? selectColor : whiteColor);
-        drawCenteredText(g, "∫dt", center.x, center.y, true);
+        drawCenteredText(g, "∫dt", centerLead.x, centerLead.y, true);
         
         // Draw current dots
         curcount = updateDotCount(current, curcount);

@@ -112,9 +112,8 @@ public class MultiplyConstElm extends CircuitElm {
         
         // Draw "×" label inside the box
         g.setFont(labelFont);
-        Point center = interpPoint(lead1, lead2, 0.5);
         g.setColor(needsHighlight() ? selectColor : whiteColor);
-        drawCenteredText(g, "×", center.x, center.y, true);
+        drawCenteredText(g, "×", centerLead.x, centerLead.y, true);
         
         // Draw the gain/name label below the box
         boolean selected = needsHighlight();
@@ -136,8 +135,8 @@ public class MultiplyConstElm extends CircuitElm {
                 label = "×" + getUnitText(gain, "");
             }
         }
-        int labelY = center.y + opheight + 8;
-        drawCenteredText(g, label, center.x, labelY, true);
+        int labelY = centerLead.y + opheight + 8;
+        drawCenteredText(g, label, centerLead.x, labelY, true);
         
         // Draw current dots
         curcount = updateDotCount(current, curcount);

@@ -119,8 +119,7 @@ public class DividerElm extends CircuitElm {
         
         // Draw "÷" label
         g.setFont(labelFont);
-        Point center = interpPoint(lead1, lead2, 0.5);
-        drawCenteredText(g, "\u00f7", center.x, center.y, true);
+        drawCenteredText(g, "\u00f7", centerLead.x, centerLead.y, true);
         
         // Draw current dots
         curcount = updateDotCount(current, curcount);

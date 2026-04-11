@@ -28,7 +28,7 @@ class SimulationLoop {
     }
 
     public void updateCircuit() {
-        PerfMonitor perfmon = new PerfMonitor();
+        PerfMonitor perfmon = new PerfMonitor(sim.developerMode);
         perfmon.startContext("updateCircuit()");
 
         sim.getViewportController().checkCanvasSize();
@@ -209,15 +209,12 @@ class SimulationLoop {
                     boolean preConverged = sim.isConverged();
                     sim.elmArr[i].doStep();
 
-                    if (preConverged && !sim.isConverged()) {
-                        if (subiter > sim.convergenceCheckThreshold) {
-                            sim.elmArr[i].nonConverged = true;
-                            if (!(sim.elmArr[i] instanceof EquationTableElm)) {
-                                String text = "CirSim: t=" + timingState.t + " dt=" + timingState.timeStep + " Element causing convergence failure: " +
-                                              sim.elmArr[i].getClass().getSimpleName() + " at (" +
-                                              sim.elmArr[i].x + "," + sim.elmArr[i].y + ")";
-                                CirSim.console(text);
-                            }
+                    if (preConverged && !sim.isConverged() && subiter > sim.convergenceCheckThreshold) {
+                        sim.elmArr[i].nonConverged = true;
+                        if (!(sim.elmArr[i] instanceof EquationTableElm)) {
+                            CirSim.console("CirSim: t=" + timingState.t + " dt=" + timingState.timeStep + " Element causing convergence failure: " +
+                                          sim.elmArr[i].getClass().getSimpleName() + " at (" +
+                                          sim.elmArr[i].x + "," + sim.elmArr[i].y + ")");
                         }
                     }
                 }

@@ -123,9 +123,8 @@ public class DifferentiatorElm extends CircuitElm {
         
         // Draw "d/dt" label inside the box
         g.setFont(labelFont);
-        Point center = interpPoint(lead1, lead2, 0.5);
         g.setColor(needsHighlight() ? selectColor : whiteColor);
-        drawCenteredText(g, "d/dt", center.x, center.y, true);
+        drawCenteredText(g, "d/dt", centerLead.x, centerLead.y, true);
         
         // Draw current dots
         curcount = updateDotCount(current, curcount);

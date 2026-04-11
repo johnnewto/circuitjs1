@@ -7,19 +7,25 @@ import com.lushprojects.circuitjs1.client.core.RowInfo;
 
 public class MatrixStamper {
     private final CirSim sim;
+    private int cachedNodeListSize;
 
     public MatrixStamper(CirSim sim) {
         this.sim = sim;
     }
 
+    /** Call after analyzeCircuit() to cache the node list size for stamp methods. */
+    public void cacheNodeListSize() {
+        cachedNodeListSize = sim.getCircuitAnalyzer().getNodeList().size();
+    }
+
     public void stampVCVS(int n1, int n2, double coef, int vs) {
-        int vn = sim.getCircuitAnalyzer().getNodeList().size() + vs;
+        int vn = cachedNodeListSize + vs;
         stampMatrix(vn, n1, coef);
         stampMatrix(vn, n2, -coef);
     }
 
     public void stampVoltageSource(int n1, int n2, int vs, double v) {
-        int vn = sim.getCircuitAnalyzer().getNodeList().size() + vs;
+        int vn = cachedNodeListSize + vs;
         stampMatrix(vn, n1, -1);
         stampMatrix(vn, n2, 1);
         stampRightSide(vn, v);
@@ -28,7 +34,7 @@ public class MatrixStamper {
     }
 
     public void stampVoltageSource(int n1, int n2, int vs) {
-        int vn = sim.getCircuitAnalyzer().getNodeList().size() + vs;
+        int vn = cachedNodeListSize + vs;
         stampMatrix(vn, n1, -1);
         stampMatrix(vn, n2, 1);
         stampRightSide(vn);
@@ -37,7 +43,7 @@ public class MatrixStamper {
     }
 
     public void updateVoltageSource(int n1, int n2, int vs, double v) {
-        int vn = sim.getCircuitAnalyzer().getNodeList().size() + vs;
+        int vn = cachedNodeListSize + vs;
         stampRightSide(vn, v);
     }
 
@@ -74,7 +80,7 @@ public class MatrixStamper {
     }
 
     public void stampCCCS(int n1, int n2, int vs, double gain) {
-        int vn = sim.getCircuitAnalyzer().getNodeList().size() + vs;
+        int vn = cachedNodeListSize + vs;
         stampMatrix(n1, vn, gain);
         stampMatrix(n2, vn, -gain);
     }

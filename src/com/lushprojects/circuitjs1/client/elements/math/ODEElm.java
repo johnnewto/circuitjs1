@@ -362,9 +362,8 @@ public class ODEElm extends CircuitElm {
         drawThickPolygon(g, bodyPoly);
         
         // Draw integral symbol with initial value as subscript in box
-        Point center = interpPoint(lead1, lead2, 0.5);
-        int mid_x = center.x;
-        int mid_y = center.y;
+        int mid_x = centerLead.x;
+        int mid_y = centerLead.y;
         
         boolean selected = needsHighlight();
         

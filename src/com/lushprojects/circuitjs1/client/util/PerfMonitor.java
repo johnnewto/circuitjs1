@@ -28,12 +28,22 @@ public class PerfMonitor {
     private String rootCtxName;
     private PerfEntry rootCtx;
     private PerfEntry ctx;
+    private boolean enabled;
     
     public PerfMonitor() {
-    
+        this.enabled = false;
+    }
+
+    public PerfMonitor(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
     }
 
     public void startContext(String name) {
+        if (!enabled) return;
         PerfEntry newEntry = startNewEntry(ctx);
         if (ctx == null) {
             ctx = newEntry;
@@ -49,6 +59,7 @@ public class PerfMonitor {
     }
     
     public void stopContext() {
+        if (!enabled) return;
         if (ctx != null) {
             ctx.endTime = getTime();
             ctx.length = ctx.endTime - ctx.startTime;
