@@ -74,6 +74,7 @@ public class ClipboardManagerCore {
 					sim.setMouseElm(null);
 				ce.delete();
 				sim.elmList.removeElementAt(i);
+				sim.invalidateDrawOrder();
 				hasDeleted = true;
 			}
 		}

@@ -194,6 +194,7 @@ final class ScopeManager {
 	    if (ce instanceof ScopeElm && (((ScopeElm) ce).elmScope.needToRemove())) {
 		ce.delete();
 		sim.elmList.removeElementAt(i);
+		sim.invalidateDrawOrder();
 		sim.needAnalyze();
 	    }
 	}

@@ -194,12 +194,13 @@ class SimulationLoop {
                 sim.setConverged(true);
                 sim.subIterations = subiter;
 
-                for (i = 0; i != sim.getSolverMatrixState().circuitMatrixSize; i++)
-                    sim.getSolverMatrixState().circuitRightSide[i] = sim.getSolverMatrixState().origRightSide[i];
-                if (sim.getSolverMatrixState().circuitNonLinear) {
-                    for (i = 0; i != sim.getSolverMatrixState().circuitMatrixSize; i++)
-                        for (j = 0; j != sim.getSolverMatrixState().circuitMatrixSize; j++)
-                            sim.getSolverMatrixState().circuitMatrix[i][j] = sim.getSolverMatrixState().origMatrix[i][j];
+                // Cache solver state reference to avoid repeated accessor calls
+                com.lushprojects.circuitjs1.client.core.SolverMatrixState sms = sim.getSolverMatrixState();
+                int matSize = sms.circuitMatrixSize;
+                System.arraycopy(sms.origRightSide, 0, sms.circuitRightSide, 0, matSize);
+                if (sms.circuitNonLinear) {
+                    for (i = 0; i != matSize; i++)
+                        System.arraycopy(sms.origMatrix[i], 0, sms.circuitMatrix[i], 0, matSize);
                 }
 
                 ComputedValues.resetComputedFlags();

@@ -1416,12 +1416,20 @@ public abstract class CircuitElm implements Editable {
     boolean isSelected() { return selected; }
     protected boolean canShowValueInScope(int v) { return false; }
     public final boolean canShowValueInScopeForScope(int v) { return canShowValueInScope(v); }
-    public void setSelected(boolean x) { selected = x; }
+    public void setSelected(boolean x) {
+	if (selected != x) {
+	    selected = x;
+	    if (sim != null) sim.invalidateDrawOrder();
+	}
+    }
     void selectRect(Rectangle r, boolean add) {
+	boolean prev = selected;
 	if (r.intersects(boundingBox))
 	    selected = true;
 	else if (!add)
 	    selected = false;
+	if (selected != prev && sim != null)
+	    sim.invalidateDrawOrder();
     }
     protected static int abs(int x) { return x < 0 ? -x : x; }
     protected static int sign(int x) { return (x < 0) ? -1 : (x == 0) ? 0 : 1; }

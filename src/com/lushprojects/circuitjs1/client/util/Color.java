@@ -42,6 +42,8 @@ public class Color
     
     // only for special cases, like no color, or maybe named colors
     private String colorText = null;
+    // cached hex value to avoid repeated string concatenation
+    private String cachedHex = null;
 
     public Color (String colorText) {
         this.colorText = colorText;
@@ -91,10 +93,13 @@ public class Color
             return colorText;
         }
 
-        return "#"
-            + pad(Integer.toHexString(r))
-            + pad(Integer.toHexString(g))
-            + pad(Integer.toHexString(b));
+        if (cachedHex == null) {
+            cachedHex = "#"
+                + pad(Integer.toHexString(r))
+                + pad(Integer.toHexString(g))
+                + pad(Integer.toHexString(b));
+        }
+        return cachedHex;
     }
 
     private String pad (String in)

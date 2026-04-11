@@ -1431,6 +1431,7 @@ public CirSim() {
 		return;
 	    ensureElementHasZOrder(ce);
 	    elmList.addElement(ce);
+	    invalidateDrawOrder();
 	}
 
 	void ensureElementHasZOrder(CircuitElm ce) {
@@ -1448,6 +1449,30 @@ public CirSim() {
 	    }
 	    return maxZOrder + 1;
 	}
+
+	// Cached draw/pick order lists and dirty flag to avoid re-sorting every frame
+	private ArrayList<CircuitElm> cachedDrawOrder = null;
+	private ArrayList<CircuitElm> cachedPickOrder = null;
+	private boolean drawOrderDirty = true;
+
+	void invalidateDrawOrder() {
+	    drawOrderDirty = true;
+	}
+
+	private static final Comparator<CircuitElm> drawOrderComparator = new Comparator<CircuitElm>() {
+	    public int compare(CircuitElm a, CircuitElm b) {
+		if (a.isSelected() != b.isSelected())
+		    return a.isSelected() ? 1 : -1;
+		return a.getZOrder() < b.getZOrder() ? -1 : (a.getZOrder() > b.getZOrder() ? 1 : 0);
+	    }
+	};
+
+	private static final Comparator<CircuitElm> pickOrderComparator = new Comparator<CircuitElm>() {
+	    public int compare(CircuitElm a, CircuitElm b) {
+		int cmp = a.getZOrder() < b.getZOrder() ? -1 : (a.getZOrder() > b.getZOrder() ? 1 : 0);
+		return -cmp;
+	    }
+	};
 
 	private ArrayList<CircuitElm> getElementsSortedByZOrder(final boolean descending, final boolean selectedOnTop) {
 	    ArrayList<CircuitElm> ordered = new ArrayList<CircuitElm>(elmList.size());
@@ -1468,11 +1493,32 @@ public CirSim() {
 	}
 
 	ArrayList<CircuitElm> getElementsInDrawOrder() {
-	    return getElementsSortedByZOrder(false, true);
+	    if (drawOrderDirty || cachedDrawOrder == null) {
+		cachedDrawOrder = new ArrayList<CircuitElm>(elmList.size());
+		for (int i = 0; i != elmList.size(); i++) {
+		    CircuitElm ce = elmList.elementAt(i);
+		    ensureElementHasZOrder(ce);
+		    cachedDrawOrder.add(ce);
+		}
+		Collections.sort(cachedDrawOrder, drawOrderComparator);
+		// Pick order uses different comparator, rebuild too
+		cachedPickOrder = null;
+		drawOrderDirty = false;
+	    }
+	    return cachedDrawOrder;
 	}
 
 	ArrayList<CircuitElm> getElementsInPickOrder() {
-	    return getElementsSortedByZOrder(true, false);
+	    if (cachedPickOrder == null) {
+		cachedPickOrder = new ArrayList<CircuitElm>(elmList.size());
+		for (int i = 0; i != elmList.size(); i++) {
+		    CircuitElm ce = elmList.elementAt(i);
+		    ensureElementHasZOrder(ce);
+		    cachedPickOrder.add(ce);
+		}
+		Collections.sort(cachedPickOrder, pickOrderComparator);
+	    }
+	    return cachedPickOrder;
 	}
 
 	private boolean hasSelectedElements() {
@@ -1486,11 +1532,13 @@ public CirSim() {
 	private void rewriteZOrder(ArrayList<CircuitElm> ordered) {
 	    for (int i = 0; i != ordered.size(); i++)
 		ordered.get(i).setZOrder(i);
+	    invalidateDrawOrder();
 	}
 
 	private void markVisualOrderChanged() {
 	    needsRecoverySave = true;
 	    unsavedChanges = true;
+	    invalidateDrawOrder();
 	}
 
 	void bringToFront(CircuitElm fallbackElm) {
@@ -2182,6 +2230,7 @@ public CirSim() {
     		if (ce.x == ce.x2 && ce.y == ce.y2) {
     			elmList.removeElementAt(i);
     			ce.delete();
+    			invalidateDrawOrder();
     			changed = true;
     		}
     	}

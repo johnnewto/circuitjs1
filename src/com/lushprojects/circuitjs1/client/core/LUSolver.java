@@ -68,11 +68,10 @@ public final class LUSolver {
                 if (largestRow == -1) {
                     return j;
                 }
-                for (k = 0; k != n; k++) {
-                    double x = a[largestRow][k];
-                    a[largestRow][k] = a[j][k];
-                    a[j][k] = x;
-                }
+                // Swap row references instead of element-by-element: O(1) vs O(n)
+                double[] tmp = a[largestRow];
+                a[largestRow] = a[j];
+                a[j] = tmp;
             }
 
             ipvt[j] = largestRow;
