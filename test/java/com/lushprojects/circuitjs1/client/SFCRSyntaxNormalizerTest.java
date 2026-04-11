@@ -230,6 +230,43 @@ class SFCRSyntaxNormalizerTest {
         assertTrue(normalized.contains("@end"), "Should contain @end");
     }
 
+        @Test
+        @DisplayName("ignores parentheses inside R-style comments when normalizing")
+        void ignoresParenthesesInsideCommentsWhenNormalizing() {
+        String rStyle = "growth_eqs <- sfcr_set(\n" +
+            "  A ~ 1,\n" +
+            "  # --- Section (unfinished\n" +
+            "  B ~ A + 1\n" +
+            ")\n" +
+            "\n" +
+            "@zorder\n" +
+            "  uid:block z:0\n" +
+            "@end\n";
+
+        String normalized = new SFCRSyntaxNormalizer().normalize(rStyle);
+
+        assertTrue(normalized.contains("@equations growth_eqs"),
+            "R-style block should still normalize even if a comment contains an unmatched parenthesis");
+        assertTrue(normalized.contains("B ~ A + 1"),
+            "Rows after the commented parenthesis should remain inside the normalized equations block");
+        }
+
+        @Test
+        @DisplayName("parseToResult handles unmatched parentheses inside R-style comments")
+        void parseToResultHandlesUnmatchedParenthesesInsideComments() {
+        String rStyle = "growth_eqs <- sfcr_set(\n" +
+            "  A ~ 1,\n" +
+            "  # --- Section (unfinished\n" +
+            "  B ~ A + 1\n" +
+            ")\n";
+
+        SFCRParseResult result = SFCRParser.parseToResult(rStyle);
+
+        assertNotNull(result, "Parser should accept unmatched parentheses inside comments");
+        SFCRParseResult.BlockDump eqBlock = result.findBlock("equations", "growth_eqs");
+        assertNotNull(eqBlock, "Equations block should still be produced");
+        }
+
     @Test
     @DisplayName("normalizes R-style if expressions to ternary switch equations")
     void normalizesIfExpressionsToTernarySwitchEquations() {

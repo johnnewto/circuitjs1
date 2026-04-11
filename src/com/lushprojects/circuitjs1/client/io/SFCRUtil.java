@@ -222,13 +222,51 @@ public class SFCRUtil {
      * Returns -1 if not found.
      */
     public static int findMatchingParen(String text, int openIndex) {
+        if (text == null || openIndex < 0 || openIndex >= text.length()) {
+            return -1;
+        }
         int depth = 0;
+        boolean inHashComment = false;
+        char quoteChar = 0;
+        boolean escaped = false;
         for (int i = openIndex; i < text.length(); i++) {
             char c = text.charAt(i);
-            if (c == '(') depth++;
-            else if (c == ')') {
+            if (inHashComment) {
+                if (c == '\n' || c == '\r') {
+                    inHashComment = false;
+                }
+                continue;
+            }
+            if (quoteChar != 0) {
+                if (escaped) {
+                    escaped = false;
+                    continue;
+                }
+                if (c == '\\') {
+                    escaped = true;
+                    continue;
+                }
+                if (c == quoteChar) {
+                    quoteChar = 0;
+                }
+                continue;
+            }
+            if (c == '#') {
+                inHashComment = true;
+                continue;
+            }
+            if (c == '\'' || c == '"') {
+                quoteChar = c;
+                escaped = false;
+                continue;
+            }
+            if (c == '(') {
+                depth++;
+            } else if (c == ')') {
                 depth--;
-                if (depth == 0) return i;
+                if (depth == 0) {
+                    return i;
+                }
             }
         }
         return -1;
@@ -276,8 +314,32 @@ public class SFCRUtil {
             return 0;
         }
         int delta = 0;
+        char quoteChar = 0;
+        boolean escaped = false;
         for (int i = 0; i < line.length(); i++) {
             char ch = line.charAt(i);
+            if (quoteChar != 0) {
+                if (escaped) {
+                    escaped = false;
+                    continue;
+                }
+                if (ch == '\\') {
+                    escaped = true;
+                    continue;
+                }
+                if (ch == quoteChar) {
+                    quoteChar = 0;
+                }
+                continue;
+            }
+            if (ch == '#') {
+                break;
+            }
+            if (ch == '\'' || ch == '"') {
+                quoteChar = ch;
+                escaped = false;
+                continue;
+            }
             if (ch == '(') {
                 delta++;
             } else if (ch == ')') {

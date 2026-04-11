@@ -739,20 +739,7 @@ public class RStyleParseService {
     }
 
     private int findMatchingParen(String text, int openIdx) {
-        int depth = 0;
-        for (int i = openIdx; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (c == '(') {
-                depth++;
-            }
-            if (c == ')') {
-                depth--;
-                if (depth == 0) {
-                    return i;
-                }
-            }
-        }
-        return -1;
+        return SFCRUtil.findMatchingParen(text, openIdx);
     }
 
     private ArrayList<String> splitByTopLevelComma(String text) {
